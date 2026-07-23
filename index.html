@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newsletter Builder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500&display=swap');
+  @font-face { font-family:'Untimes'; src:url('Untimes-BoldItalic.woff2') format('woff2'),url('Untimes-BoldItalic.woff') format('woff'); font-weight:bold; font-style:italic; }
+
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#f5f4f0;font-family:'Geist',sans-serif;color:#1a1a18;min-height:100vh;}
+
+  /* ── Sidebar ── */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:90;}
+  .overlay.show{display:block;}
+  .sidebar{position:fixed;top:0;right:-380px;width:360px;height:100vh;background:#fff;border-left:.5px solid #e8e6df;overflow-y:auto;z-index:100;transition:right .25s ease;padding:32px 28px 48px;}
+  .sidebar.open{right:0;}
+  .sidebar-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;}
+  .sidebar-title{font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#888780;}
+  .sidebar-close{background:none;border:none;font-size:20px;color:#888780;cursor:pointer;line-height:1;padding:0;}
+  .sidebar-close:hover{color:#1a1a18;}
+  .s-section{margin-bottom:26px;padding-bottom:26px;border-bottom:.5px solid #e8e6df;}
+  .s-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+  .s-section-title{font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#1a1a18;margin-bottom:14px;}
+  .s-field{margin-bottom:12px;}
+  .s-field label{display:block;font-size:12px;color:#888780;margin-bottom:5px;}
+  .s-field input[type="text"],.s-field input[type="password"]{width:100%;font-family:'Geist',sans-serif;font-size:13px;color:#1a1a18;background:#fff;border:.5px solid #d3d1c7;border-radius:4px;padding:8px 10px;outline:none;}
+  .s-field input[type="text"]:focus,.s-field input[type="password"]:focus{border-color:#888780;}
+  .color-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+  .color-row label{flex:1;font-size:12px;color:#888780;margin:0;}
+  input[type="color"]{width:34px;height:28px;border:.5px solid #d3d1c7;border-radius:3px;padding:2px;cursor:pointer;background:#fff;}
+  .font-row{margin-bottom:10px;}
+  .font-row label{display:block;font-size:12px;color:#888780;margin-bottom:5px;}
+  .font-pick-btn{display:flex;align-items:center;gap:8px;font-family:'Geist Mono',monospace;font-size:11px;color:#888780;border:.5px dashed #d3d1c7;border-radius:4px;padding:8px 12px;cursor:pointer;background:#fafaf8;width:100%;transition:all .15s;}
+  .font-pick-btn:hover{border-color:#888780;background:#f5f4f0;}
+  .font-loaded{font-family:'Geist Mono',monospace;font-size:10px;color:#2d6a4f;margin-top:3px;}
+  .font-clear{font-size:10px;color:#c0392b;background:none;border:none;cursor:pointer;padding:0;margin-left:6px;font-family:'Geist Mono',monospace;}
+  .s-note{font-size:11px;color:#b4b2a9;line-height:1.5;margin-top:6px;}
+
+  /* ── Main layout ── */
+  .main{max-width:720px;margin:0 auto;padding:40px 24px 80px;}
+
+  /* ── Topbar ── */
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;}
+  .page-title{font-family:'Untimes',Georgia,serif;font-style:italic;font-weight:700;font-size:26px;color:#1a1a18;}
+  .page-sub{font-family:'Geist Mono',monospace;font-size:11px;color:#888780;letter-spacing:.06em;margin-top:2px;}
+  .settings-btn{display:flex;align-items:center;gap:7px;font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#888780;background:#fff;border:.5px solid #d3d1c7;border-radius:4px;padding:9px 14px;cursor:pointer;transition:all .15s;}
+  .settings-btn:hover{background:#f5f4f0;color:#1a1a18;}
+
+  /* ── Tabs ── */
+  .tab-bar{background:#fff;border-radius:4px 4px 0 0;border:.5px solid #e8e6df;border-bottom:none;padding:0 36px;display:flex;}
+  .tab-btn{font-family:'Geist',sans-serif;font-size:13px;padding:13px 0;margin-right:22px;border:none;background:none;cursor:pointer;color:#888780;border-bottom:2px solid transparent;margin-bottom:-1px;}
+  .tab-btn.active{color:#1a1a18;border-bottom-color:#1a1a18;font-weight:500;}
+
+  /* ── Cards ── */
+  .card{background:#fff;border:.5px solid #e8e6df;border-radius:0;padding:36px;margin-bottom:0;border-top:none;}
+  .card:first-child{border-top:.5px solid #e8e6df;}
+  .card+.card{border-top:none;}
+  .card:last-child{border-radius:0 0 4px 4px;}
+
+  .section-lbl{font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#888780;margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+  .section-lbl::after{content:'';flex:1;height:.5px;background:#e8e6df;}
+
+  .field{margin-bottom:18px;}
+  .field:last-child{margin-bottom:0;}
+  label{display:block;font-size:13px;color:#888780;margin-bottom:6px;}
+  input[type="text"],textarea{width:100%;font-family:'Geist',sans-serif;font-size:14px;color:#1a1a18;background:#fff;border:.5px solid #d3d1c7;border-radius:4px;padding:10px 12px;outline:none;transition:border-color .15s;}
+  input[type="text"]:focus,textarea:focus{border-color:#888780;}
+  textarea{resize:vertical;line-height:1.7;}
+  .hint{font-size:12px;color:#b4b2a9;margin-top:5px;}
+
+  /* ── Photo area ── */
+  .photo-drop{border:.5px dashed #d3d1c7;border-radius:4px;padding:22px;text-align:center;cursor:pointer;transition:all .15s;background:#fafaf8;margin-top:8px;}
+  .photo-drop:hover,.photo-drop.drag-over{border-color:#888780;background:#f5f4f0;}
+  .photo-drop-ico{font-size:20px;margin-bottom:6px;color:#b4b2a9;}
+  .photo-drop-lbl{font-family:'Geist Mono',monospace;font-size:11px;color:#b4b2a9;letter-spacing:.06em;}
+  .photo-thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;}
+  .photo-thumb{aspect-ratio:4/3;overflow:hidden;border-radius:3px;background:#ece9e2;position:relative;}
+  .photo-thumb img{width:100%;height:100%;object-fit:cover;}
+  .rm-photo{position:absolute;top:4px;right:4px;width:18px;height:18px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;}
+
+  /* ── Preview ── */
+  .preview-wrap{background:#fff;border:.5px solid #e8e6df;border-radius:0 0 4px 4px;border-top:none;overflow:hidden;display:none;}
+  .preview-wrap.show{display:block;}
+  .preview-iframe{width:100%;border:none;display:block;min-height:700px;}
+
+  /* ── Action bar ── */
+  .actions{background:#fff;border:.5px solid #e8e6df;border-radius:4px;padding:18px 36px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;}
+  .btn{background:#1a1a18;color:#f5f4f0;border:none;border-radius:4px;padding:10px 22px;font-family:'Geist',sans-serif;font-size:14px;cursor:pointer;transition:opacity .15s;}
+  .btn:hover{opacity:.85;}
+  .btn:disabled{opacity:.35;cursor:not-allowed;}
+  .btn-sm{background:#fff;color:#1a1a18;border:.5px solid #d3d1c7;border-radius:4px;padding:9px 16px;font-family:'Geist',sans-serif;font-size:13px;cursor:pointer;transition:background .15s;}
+  .btn-sm:hover{background:#f5f4f0;}
+  .pub-msg{font-family:'Geist Mono',monospace;font-size:11px;padding:7px 12px;border-radius:4px;display:none;}
+  .pub-msg.ok{background:#d4edda;color:#2d6a4f;display:block;}
+  .pub-msg.err{background:#f8d7da;color:#c0392b;display:block;}
+  .pub-link{color:#2d6a4f;text-decoration:underline;word-break:break-all;}
+</style>
+</head>
+<body>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- Settings Sidebar -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-head">
+    <div class="sidebar-title">Settings</div>
+    <button class="sidebar-close" onclick="closeSidebar()">×</button>
+  </div>
+
+  <div class="s-section">
+    <div class="s-section-title">Identity</div>
+    <div class="s-field"><label>Project name</label><input type="text" id="s-project" value="Project Name" oninput="autoPreview()"/></div>
+    <div class="s-field"><label>Issue / date label</label><input type="text" id="s-label" value="Week 01" oninput="autoPreview()"/></div>
+    <div class="s-field"><label>Sign-off line</label><input type="text" id="s-signoff" value="See you next week!" oninput="autoPreview()"/></div>
+    <div class="s-field"><label>Sender name</label><input type="text" id="s-sender" value="The team" oninput="autoPreview()"/></div>
+  </div>
+
+  <div class="s-section">
+    <div class="s-section-title">Colours</div>
+    <div class="color-row"><label>Page background</label><input type="color" id="c-page" value="#f5f4f0" oninput="autoPreview()"/></div>
+    <div class="color-row"><label>Content area</label><input type="color" id="c-content" value="#ffffff" oninput="autoPreview()"/></div>
+    <div class="color-row"><label>"Coming next" section</label><input type="color" id="c-next" value="#f9f8f4" oninput="autoPreview()"/></div>
+    <div class="color-row"><label>Footer background</label><input type="color" id="c-footer" value="#1a1a18" oninput="autoPreview()"/></div>
+    <div class="color-row"><label>Bullet dot</label><input type="color" id="c-dot" value="#1a1a18" oninput="autoPreview()"/></div>
+  </div>
+
+  <div class="s-section">
+    <div class="s-section-title">Fonts</div>
+    <p class="s-note" style="margin-bottom:14px;">Upload .woff, .woff2, or .ttf files. They'll be embedded in the downloaded HTML so the file is fully self-contained.</p>
+    <div class="font-row">
+      <label>Header font <span style="color:#b4b2a9">(headlines, sign-off)</span></label>
+      <button class="font-pick-btn" onclick="pickFont('header')">⊕ Choose file</button>
+      <div class="font-loaded" id="font-header-name" style="display:none;"></div>
+    </div>
+    <div class="font-row">
+      <label>Body font <span style="color:#b4b2a9">(intro, bullets)</span></label>
+      <button class="font-pick-btn" onclick="pickFont('body')">⊕ Choose file</button>
+      <div class="font-loaded" id="font-body-name" style="display:none;"></div>
+    </div>
+    <div class="font-row">
+      <label>Label font <span style="color:#b4b2a9">(section labels, metadata)</span></label>
+      <button class="font-pick-btn" onclick="pickFont('label')">⊕ Choose file</button>
+      <div class="font-loaded" id="font-label-name" style="display:none;"></div>
+    </div>
+    <input type="file" id="font-picker" accept=".woff,.woff2,.ttf" style="display:none"/>
+  </div>
+
+  <div class="s-section">
+    <div class="s-section-title">Publish to GitHub</div>
+    <div class="s-field">
+      <label>Personal Access Token</label>
+      <input type="password" id="s-ghtoken" placeholder="ghp_…" oninput="saveToken()"/>
+      <p class="s-note">Needs <code>Contents: Write</code> permission on the repo. Stored only in your browser.</p>
+    </div>
+    <div class="s-field">
+      <label>Filename <span style="color:#b4b2a9">(auto-generated)</span></label>
+      <input type="text" id="s-filename" placeholder="week01.html" style="color:#888780;"/>
+      <p class="s-note">Leave blank to auto-generate from the issue label.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <div class="topbar">
+    <div>
+      <div class="page-title">Newsletter Builder</div>
+      <div class="page-sub">Generic edition — any project</div>
+    </div>
+    <button class="settings-btn" onclick="openSidebar()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.2" stroke="currentColor" stroke-width="1.1"/><path d="M7 1v1.2M7 11.8V13M1 7h1.2M11.8 7H13M2.757 2.757l.849.849M10.394 10.394l.849.849M2.757 11.243l.849-.849M10.394 3.606l.849-.849" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+      Settings
+    </button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-build" onclick="switchTab('build')">Build</button>
+    <button class="tab-btn" id="tab-preview" onclick="switchTab('preview')">Preview</button>
+  </div>
+
+  <!-- Build tab -->
+  <div id="build-panel">
+
+    <div class="card">
+      <div class="section-lbl">Headline &amp; intro</div>
+      <div class="field">
+        <label>Headline</label>
+        <input type="text" id="f-headline" placeholder="e.g. One chapter closes, another opens." oninput="autoPreview()"/>
+      </div>
+      <div class="field">
+        <label>Introduction</label>
+        <textarea id="f-intro" rows="5" placeholder="A short paragraph setting the scene for this week…" oninput="autoPreview()"></textarea>
+        <p class="hint">Use two line breaks for a new paragraph.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-lbl">What we got up to</div>
+      <div class="field">
+        <label>Bullet points</label>
+        <textarea id="f-bullets" rows="8" placeholder="We mapped the key touchpoints across the journey…&#10;We developed the onboarding flow…&#10;We ran user testing on the checkout experience…" oninput="autoPreview()"></textarea>
+        <p class="hint">One update per line. No dashes or asterisks needed.</p>
+      </div>
+      <div class="field">
+        <label>Photos <span style="color:#b4b2a9">(optional)</span></label>
+        <div class="photo-drop" id="photo-drop" onclick="document.getElementById('photo-input').click()" ondragover="e=event;e.preventDefault();e.currentTarget.classList.add('drag-over')" ondragleave="event.currentTarget.classList.remove('drag-over')" ondrop="dropPhotos(event)">
+          <div class="photo-drop-ico">⊕</div>
+          <div class="photo-drop-lbl">Click to add photos — or drag them here</div>
+          <div class="photo-drop-lbl" style="margin-top:3px;font-size:10px;">1 photo = full width · 2+ photos = grid</div>
+        </div>
+        <div class="photo-thumbs" id="photo-thumbs"></div>
+        <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="addPhotos(this.files)"/>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-lbl">What's coming next</div>
+      <div class="field">
+        <label>Bullet points</label>
+        <textarea id="f-next" rows="4" placeholder="We will kick off three new workstreams…&#10;We will brief the incoming team members…" oninput="autoPreview()"></textarea>
+        <p class="hint">One item per line.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Preview tab -->
+  <div id="preview-panel" style="display:none;">
+    <div class="preview-wrap show">
+      <iframe class="preview-iframe" id="preview-frame" srcdoc="<p style='padding:40px;color:#888;font-family:sans-serif'>Switch to Preview to see your newsletter.</p>"></iframe>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn" onclick="publishToGitHub()">Publish to GitHub</button>
+    <button class="btn-sm" onclick="downloadHTML()">Download HTML</button>
+    <div class="pub-msg" id="pub-msg"></div>
+  </div>
+
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+const fonts = { header: null, body: null, label: null }; // { dataUrl, name, ext }
+const photos = []; // { dataUrl, name }
+let currentFontSlot = null;
+let previewDebounce = null;
+
+const REPO = 'rnicolau-ideo/Soulgreen-weeklynote-';
+const PAGES_BASE = 'https://rnicolau-ideo.github.io/Soulgreen-weeklynote-/';
+
+// ── Sidebar ───────────────────────────────────────────────────────────────
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.getElementById('tab-build').classList.toggle('active', name === 'build');
+  document.getElementById('tab-preview').classList.toggle('active', name === 'preview');
+  document.getElementById('build-panel').style.display = name === 'build' ? 'block' : 'none';
+  document.getElementById('preview-panel').style.display = name === 'preview' ? 'block' : 'none';
+  if (name === 'preview') updatePreview();
+}
+
+// ── Font loading ──────────────────────────────────────────────────────────
+function pickFont(slot) {
+  currentFontSlot = slot;
+  document.getElementById('font-picker').value = '';
+  document.getElementById('font-picker').click();
+}
+
+document.getElementById('font-picker').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+  reader.onload = e => {
+    fonts[currentFontSlot] = { dataUrl: e.target.result, name: file.name, ext };
+    const el = document.getElementById('font-' + currentFontSlot + '-name');
+    el.style.display = 'block';
+    el.innerHTML = '✓ ' + file.name + ' <button class="font-clear" onclick="clearFont(\'' + currentFontSlot + '\')">Remove</button>';
+    autoPreview();
+  };
+  reader.readAsDataURL(file);
+});
+
+function clearFont(slot) {
+  fonts[slot] = null;
+  const el = document.getElementById('font-' + slot + '-name');
+  el.style.display = 'none';
+  el.innerHTML = '';
+  autoPreview();
+}
+
+// ── Photo loading ─────────────────────────────────────────────────────────
+function addPhotos(files) {
+  const promises = Array.from(files).map(file => new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => resolve({ dataUrl: e.target.result, name: file.name });
+    reader.readAsDataURL(file);
+  }));
+  Promise.all(promises).then(results => {
+    photos.push(...results);
+    renderThumbs();
+    autoPreview();
+  });
+}
+
+function dropPhotos(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  addPhotos(e.dataTransfer.files);
+}
+
+function renderThumbs() {
+  const wrap = document.getElementById('photo-thumbs');
+  wrap.innerHTML = photos.map((p, i) =>
+    `<div class="photo-thumb"><img src="${p.dataUrl}" alt="${p.name}"/><button class="rm-photo" onclick="removePhoto(${i})">×</button></div>`
+  ).join('');
+}
+
+function removePhoto(i) {
+  photos.splice(i, 1);
+  renderThumbs();
+  autoPreview();
+}
+
+// ── Token persistence ─────────────────────────────────────────────────────
+function saveToken() {
+  const t = document.getElementById('s-ghtoken').value;
+  if (t) localStorage.setItem('nb-ghtoken', t);
+}
+
+// ── Auto preview ──────────────────────────────────────────────────────────
+function autoPreview() {
+  clearTimeout(previewDebounce);
+  previewDebounce = setTimeout(() => {
+    if (document.getElementById('preview-panel').style.display !== 'none') updatePreview();
+  }, 400);
+}
+
+function updatePreview() {
+  const html = generateHTML();
+  const frame = document.getElementById('preview-frame');
+  frame.srcdoc = html;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function luminance(hex) {
+  const r = parseInt(hex.slice(1,3),16)/255;
+  const g = parseInt(hex.slice(3,5),16)/255;
+  const b = parseInt(hex.slice(5,7),16)/255;
+  const lin = c => c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4);
+  return 0.2126*lin(r)+0.7152*lin(g)+0.0722*lin(b);
+}
+
+function autoText(bg) { return luminance(bg) > 0.35 ? '#1a1a18' : '#f5f4f0'; }
+function autoSubtext(bg) { return luminance(bg) > 0.35 ? '#888780' : 'rgba(255,255,255,0.45)'; }
+function autoBorder(bg) { return luminance(bg) > 0.35 ? '#e8e6df' : 'rgba(255,255,255,0.12)'; }
+function autoMuted(bg) { return luminance(bg) > 0.35 ? '#444441' : 'rgba(255,255,255,0.75)'; }
+
+function getFilename() {
+  const custom = document.getElementById('s-filename').value.trim();
+  if (custom) return custom.endsWith('.html') ? custom : custom + '.html';
+  const label = document.getElementById('s-label').value.trim();
+  return label.toLowerCase().replace(/\s+/g,'') + '.html';
+}
+
+function fontFaceCSS(role, fontFamilyName) {
+  const f = fonts[role];
+  if (!f) return '';
+  const fmt = f.ext === 'woff2' ? 'woff2' : f.ext === 'woff' ? 'woff' : 'truetype';
+  return `@font-face{font-family:'${fontFamilyName}';src:url('${f.dataUrl}') format('${fmt}');}`;
+}
+
+function buildPhotoGridHTML(photoList) {
+  if (!photoList.length) return '';
+  if (photoList.length === 1) {
+    return `<div style="width:100%;margin:16px 0 8px;"><img src="${photoList[0].dataUrl}" alt="" style="width:100%;display:block;"/></div>`;
+  }
+  const cells = photoList.map(p =>
+    `<div style="aspect-ratio:4/3;overflow:hidden;background:#ece9e2;"><img src="${p.dataUrl}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"/></div>`
+  ).join('');
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0 8px;">${cells}</div>`;
+}
+
+// ── HTML generation ───────────────────────────────────────────────────────
+function generateHTML() {
+  const project  = document.getElementById('s-project').value.trim() || 'Project Name';
+  const label    = document.getElementById('s-label').value.trim() || 'Week 01';
+  const signoff  = document.getElementById('s-signoff').value.trim() || 'See you next week!';
+  const sender   = document.getElementById('s-sender').value.trim() || 'The team';
+  const headline = document.getElementById('f-headline').value.trim() || 'Newsletter headline';
+  const introRaw = document.getElementById('f-intro').value.trim();
+  const bulletsRaw = document.getElementById('f-bullets').value.trim();
+  const nextRaw  = document.getElementById('f-next').value.trim();
+
+  const cPage    = document.getElementById('c-page').value;
+  const cContent = document.getElementById('c-content').value;
+  const cNext    = document.getElementById('c-next').value;
+  const cFooter  = document.getElementById('c-footer').value;
+  const cDot     = document.getElementById('c-dot').value;
+
+  const textContent = autoText(cContent);
+  const textNext    = autoText(cNext);
+  const textFooter  = autoText(cFooter);
+  const subContent  = autoSubtext(cContent);
+  const subNext     = autoSubtext(cNext);
+  const subFooter   = autoSubtext(cFooter);
+  const borderC     = autoBorder(cContent);
+  const borderN     = autoBorder(cNext);
+  const mutedC      = autoMuted(cContent);
+
+  // Font faces & stacks
+  const hFF  = fontFaceCSS('header', 'UserHeader');
+  const bFF  = fontFaceCSS('body',   'UserBody');
+  const lFF  = fontFaceCSS('label',  'UserLabel');
+  const hStack = fonts.header ? "'UserHeader', Georgia, serif"   : "'Untimes', Georgia, serif";
+  const bStack = fonts.body   ? "'UserBody', sans-serif"         : "'Geist', sans-serif";
+  const lStack = fonts.label  ? "'UserLabel', monospace"         : "'Geist Mono', monospace";
+
+  // Intro paragraphs
+  const introParagraphs = introRaw
+    ? introRaw.split(/\n\n+/).map(p =>
+        `<p style="font-family:${bStack};font-size:15px;font-weight:400;line-height:1.75;color:${mutedC};max-width:460px;margin-bottom:12px;">${esc(p.replace(/\n/g,' '))}</p>`
+      ).join('')
+    : `<p style="font-family:${bStack};font-size:15px;color:${mutedC};">Intro goes here.</p>`;
+
+  // Bullets
+  const bulletLines = bulletsRaw ? bulletsRaw.split('\n').filter(l => l.trim()) : ['No updates yet.'];
+  const bulletsHTML = bulletLines.map(b =>
+    `<li style="font-family:${bStack};font-size:15px;font-weight:400;line-height:1.8;color:${mutedC};padding:10px 0;border-top:0.5px solid ${borderC};display:flex;align-items:flex-start;gap:12px;">
+      <span style="width:5px;height:5px;border-radius:50%;background:${cDot};flex-shrink:0;margin-top:10px;display:inline-block;"></span>
+      <span>${esc(b.trim())}</span>
+    </li>`
+  ).join('');
+
+  // Photos
+  const photoGridHTML = buildPhotoGridHTML(photos);
+
+  // Next bullets
+  const nextLines = nextRaw ? nextRaw.split('\n').filter(l => l.trim()) : [];
+  const nextHTML = nextLines.length
+    ? nextLines.map(n => `<p style="font-family:${bStack};font-size:14px;font-weight:400;line-height:1.7;color:${textNext === '#f5f4f0' ? 'rgba(255,255,255,0.75)' : '#444441'};margin-bottom:8px;">• ${esc(n.trim())}</p>`).join('')
+    : `<p style="font-family:${bStack};font-size:14px;color:${subNext};">Coming soon.</p>`;
+
+  // Untimes fallback (only included if header font NOT uploaded)
+  const unimesImport = fonts.header ? '' : `@font-face{font-family:'Untimes';src:url('Untimes-BoldItalic.woff2') format('woff2'),url('Untimes-BoldItalic.woff') format('woff');font-weight:bold;font-style:italic;}`;
+  const geistImport = (fonts.body || fonts.label) ? '' : `@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500&display=swap');`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(project)} — ${esc(label)}</title>
+<style>
+${geistImport}
+${unimesImport}
+${hFF}${bFF}${lFF}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:${cPage};font-family:${bStack};color:${textContent};}
+.wrap{max-width:620px;margin:0 auto;background:${cContent};}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div style="background:${cFooter};padding:22px 36px;display:flex;align-items:baseline;justify-content:space-between;">
+    <div style="font-family:${hStack};font-style:italic;font-weight:700;font-size:22px;color:${textFooter};">${esc(project)}</div>
+    <div style="font-family:${lStack};font-size:10px;color:${subFooter};letter-spacing:.06em;text-transform:uppercase;">${esc(label)}</div>
+  </div>
+
+  <!-- WELCOME -->
+  <div style="padding:48px 48px 36px;border-bottom:1px solid ${borderC};">
+    <div style="font-family:${lStack};font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${subContent};margin-bottom:18px;">${esc(label)}</div>
+    <div style="font-family:${hStack};font-style:italic;font-weight:700;font-size:36px;line-height:1.1;letter-spacing:-0.5px;color:${textContent};margin-bottom:18px;">${esc(headline)}</div>
+    ${introParagraphs}
+  </div>
+
+  <!-- WHAT WE DID -->
+  <div style="padding:44px 48px 36px;">
+    <div style="font-family:${lStack};font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${subContent};margin-bottom:24px;">What we got up to</div>
+    <ul style="list-style:none;">
+      ${bulletsHTML}
+    </ul>
+    ${photoGridHTML}
+  </div>
+
+  <!-- COMING NEXT -->
+  <div style="padding:44px 48px 36px;border-top:1px solid ${borderN};border-bottom:1px solid ${borderN};background:${cNext};">
+    <div style="display:flex;gap:32px;align-items:flex-start;">
+      <div style="font-family:${lStack};font-size:10px;letter-spacing:.12em;color:${subNext};text-transform:uppercase;white-space:nowrap;padding-top:2px;min-width:80px;">Coming next</div>
+      <div>
+        ${nextHTML}
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGN OFF -->
+  <div style="padding:52px 48px 44px;background:${cFooter};">
+    <div style="font-family:${hStack};font-style:italic;font-weight:700;font-size:30px;line-height:1.15;color:${textFooter};margin-bottom:20px;letter-spacing:-0.3px;">${esc(signoff)}</div>
+    <div style="font-family:${bStack};font-size:13px;font-weight:400;color:${subFooter};line-height:1.6;">${esc(sender)}</div>
+  </div>
+
+  <!-- FOOTER STRIP -->
+  <div style="height:6px;background:${cNext};"></div>
+
+</div>
+</body>
+</html>`;
+}
+
+// ── Preview ───────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.getElementById('tab-build').classList.toggle('active', name === 'build');
+  document.getElementById('tab-preview').classList.toggle('active', name === 'preview');
+  document.getElementById('build-panel').style.display = name === 'build' ? 'block' : 'none';
+  document.getElementById('preview-panel').style.display = name === 'preview' ? 'block' : 'none';
+  if (name === 'preview') {
+    const html = generateHTML();
+    const frame = document.getElementById('preview-frame');
+    frame.srcdoc = html;
+    // Resize iframe after load
+    frame.onload = () => {
+      try { frame.style.height = frame.contentDocument.body.scrollHeight + 40 + 'px'; } catch(e){}
+    };
+  }
+}
+
+// ── Download ──────────────────────────────────────────────────────────────
+function downloadHTML() {
+  const html = generateHTML();
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = getFilename();
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── GitHub Publish ────────────────────────────────────────────────────────
+async function publishToGitHub() {
+  const token = document.getElementById('s-ghtoken').value.trim() || localStorage.getItem('nb-ghtoken') || '';
+  const msg   = document.getElementById('pub-msg');
+
+  if (!token) {
+    msg.className = 'pub-msg err';
+    msg.textContent = 'Add your GitHub token in Settings first.';
+    return;
+  }
+
+  const filename = getFilename();
+  const html = generateHTML();
+
+  // base64 encode (handles Unicode)
+  const encoded = btoa(unescape(encodeURIComponent(html)));
+
+  msg.className = 'pub-msg ok';
+  msg.textContent = 'Publishing…';
+
+  const apiBase = `https://api.github.com/repos/${REPO}/contents/${filename}`;
+  const headers = {
+    'Authorization': `token ${token}`,
+    'Accept': 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json'
+  };
+
+  // Check if file already exists (need SHA to update)
+  let sha = null;
+  try {
+    const check = await fetch(apiBase, { headers });
+    if (check.ok) { const d = await check.json(); sha = d.sha; }
+  } catch(e) {}
+
+  const body = { message: `Add ${filename}`, content: encoded, branch: 'main' };
+  if (sha) body.sha = sha;
+
+  try {
+    const res = await fetch(apiBase, { method: 'PUT', headers, body: JSON.stringify(body) });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || res.status);
+    }
+    const liveUrl = PAGES_BASE + filename;
+    msg.className = 'pub-msg ok';
+    msg.innerHTML = `Published! Live in ~30s: <a class="pub-link" href="${liveUrl}" target="_blank">${liveUrl}</a>`;
+    localStorage.setItem('nb-ghtoken', token);
+  } catch(e) {
+    msg.className = 'pub-msg err';
+    msg.textContent = 'Publish failed: ' + e.message;
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('nb-ghtoken');
+  if (saved) document.getElementById('s-ghtoken').value = saved;
+});
+</script>
+
+</body>
+</html>
