@@ -59,4 +59,12 @@ app.post('/publish', async (req, res) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Weeknote tool server listening on port ${port}`));
+app.listen(port, () => {
+  console.log(`Weeknote tool server listening on port ${port}`);
+  const token = process.env.GITHUB_TOKEN;
+  if (token) {
+    console.log(`GITHUB_TOKEN: present (starts with ${token.slice(0, 6)}…, length ${token.length})`);
+  } else {
+    console.log('GITHUB_TOKEN: NOT SET');
+  }
+});
