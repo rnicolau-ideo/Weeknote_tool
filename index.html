@@ -95,6 +95,18 @@
   .pub-msg.ok{background:#d4edda;color:#2d6a4f;display:block;}
   .pub-msg.err{background:#f8d7da;color:#c0392b;display:block;}
   .pub-link{color:#2d6a4f;text-decoration:underline;word-break:break-all;}
+
+  /* ── History ── */
+  .hist-empty{font-family:'Geist Mono',monospace;font-size:11px;color:#b4b2a9;padding:12px 0;}
+  .hist-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:.5px solid #e8e6df;}
+  .hist-item:first-child{border-top:none;}
+  .hist-meta{flex:1;min-width:0;}
+  .hist-name{font-family:'Geist',sans-serif;font-size:14px;color:#1a1a18;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hist-sub{font-family:'Geist Mono',monospace;font-size:11px;color:#888780;margin-top:2px;}
+  .hist-load{font-family:'Geist',sans-serif;font-size:13px;color:#1a1a18;background:#f5f4f0;border:.5px solid #d3d1c7;border-radius:4px;padding:6px 14px;cursor:pointer;flex-shrink:0;transition:background .15s;}
+  .hist-load:hover{background:#e8e6df;}
+  .hist-del{background:none;border:none;color:#b4b2a9;font-size:16px;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1;transition:color .15s;}
+  .hist-del:hover{color:#c0392b;}
 </style>
 </head>
 <body>
@@ -150,11 +162,6 @@
   <div class="s-section">
     <div class="s-section-title">Publish to GitHub</div>
     <div class="s-field">
-      <label>Personal Access Token</label>
-      <input type="password" id="s-ghtoken" placeholder="ghp_…" oninput="saveToken()"/>
-      <p class="s-note">Needs <code>Contents: Write</code> permission on the repo. Stored only in your browser.</p>
-    </div>
-    <div class="s-field">
       <label>Filename <span style="color:#b4b2a9">(auto-generated)</span></label>
       <input type="text" id="s-filename" placeholder="week01.html" style="color:#888780;"/>
       <p class="s-note">Leave blank to auto-generate from the issue label.</p>
@@ -180,6 +187,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-build" onclick="switchTab('build')">Build</button>
     <button class="tab-btn" id="tab-preview" onclick="switchTab('preview')">Preview</button>
+    <button class="tab-btn" id="tab-history" onclick="switchTab('history')">History</button>
   </div>
 
   <!-- Build tab -->
@@ -258,6 +266,14 @@
     </div>
   </div>
 
+  <!-- History panel -->
+  <div id="history-panel" style="display:none;">
+    <div class="card" style="border-radius:0 0 4px 4px;">
+      <div class="section-lbl">Recent newsletters</div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
   <!-- Actions -->
   <div class="actions">
     <button class="btn" onclick="publishToGitHub()">Publish to GitHub</button>
@@ -277,6 +293,7 @@ let previewDebounce = null;
 
 const REPO = 'rnicolau-ideo/Weeknote_tool';
 const PAGES_BASE = 'https://rnicolau-ideo.github.io/Weeknote_tool/';
+const API_URL = 'https://YOUR-API-SERVER.onrender.com'; // set after deploying api/server.js
 
 // ── Sidebar ───────────────────────────────────────────────────────────────
 function openSidebar() {
@@ -380,12 +397,6 @@ function removePhoto(i) {
   photos.splice(i, 1);
   renderThumbs();
   autoPreview();
-}
-
-// ── Token persistence ─────────────────────────────────────────────────────
-function saveToken() {
-  const t = document.getElementById('s-ghtoken').value;
-  if (t) localStorage.setItem('nb-ghtoken', t);
 }
 
 // ── Auto preview ──────────────────────────────────────────────────────────
@@ -584,21 +595,21 @@ body{background:${cPage};font-family:${bStack};color:${textContent};}
 </html>`;
 }
 
-// ── Preview ───────────────────────────────────────────────────────────────
+// ── Preview / tab switching ───────────────────────────────────────────────
 function switchTab(name) {
-  document.getElementById('tab-build').classList.toggle('active', name === 'build');
-  document.getElementById('tab-preview').classList.toggle('active', name === 'preview');
-  document.getElementById('build-panel').style.display = name === 'build' ? 'block' : 'none';
-  document.getElementById('preview-panel').style.display = name === 'preview' ? 'block' : 'none';
+  ['build','preview','history'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === name);
+    document.getElementById(t + '-panel').style.display = t === name ? 'block' : 'none';
+  });
   if (name === 'preview') {
     const html = generateHTML();
     const frame = document.getElementById('preview-frame');
     frame.srcdoc = html;
-    // Resize iframe after load
     frame.onload = () => {
       try { frame.style.height = frame.contentDocument.body.scrollHeight + 40 + 'px'; } catch(e){}
     };
   }
+  if (name === 'history') renderHistory();
 }
 
 // ── Download ──────────────────────────────────────────────────────────────
@@ -614,62 +625,127 @@ function downloadHTML() {
 
 // ── GitHub Publish ────────────────────────────────────────────────────────
 async function publishToGitHub() {
-  const token = document.getElementById('s-ghtoken').value.trim() || localStorage.getItem('nb-ghtoken') || '';
-  const msg   = document.getElementById('pub-msg');
-
-  if (!token) {
-    msg.className = 'pub-msg err';
-    msg.textContent = 'Add your GitHub token in Settings first.';
-    return;
-  }
-
+  const msg = document.getElementById('pub-msg');
   const filename = getFilename();
   const html = generateHTML();
-
-  // base64 encode (handles Unicode)
   const encoded = btoa(unescape(encodeURIComponent(html)));
 
   msg.className = 'pub-msg ok';
   msg.textContent = 'Publishing…';
 
-  const apiBase = `https://api.github.com/repos/${REPO}/contents/${filename}`;
-  const headers = {
-    'Authorization': `token ${token}`,
-    'Accept': 'application/vnd.github.v3+json',
-    'Content-Type': 'application/json'
-  };
-
-  // Check if file already exists (need SHA to update)
-  let sha = null;
   try {
-    const check = await fetch(apiBase, { headers });
-    if (check.ok) { const d = await check.json(); sha = d.sha; }
-  } catch(e) {}
+    const res = await fetch(API_URL + '/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repo: REPO, filename, content: encoded })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.status);
 
-  const body = { message: `Add ${filename}`, content: encoded, branch: 'main' };
-  if (sha) body.sha = sha;
-
-  try {
-    const res = await fetch(apiBase, { method: 'PUT', headers, body: JSON.stringify(body) });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || res.status);
-    }
     const liveUrl = PAGES_BASE + filename;
     msg.className = 'pub-msg ok';
     msg.innerHTML = `Published! Live in ~30s: <a class="pub-link" href="${liveUrl}" target="_blank">${liveUrl}</a>`;
-    localStorage.setItem('nb-ghtoken', token);
+    saveToHistory(filename, liveUrl);
   } catch(e) {
     msg.className = 'pub-msg err';
     msg.textContent = 'Publish failed: ' + e.message;
   }
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────
-window.addEventListener('load', () => {
-  const saved = localStorage.getItem('nb-ghtoken');
-  if (saved) document.getElementById('s-ghtoken').value = saved;
-});
+// ── History ───────────────────────────────────────────────────────────────
+const HISTORY_KEY = 'nb-history';
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch(_) { return []; }
+}
+
+function saveToHistory(filename, liveUrl) {
+  const project = document.getElementById('s-project').value.trim() || 'Project Name';
+  const label   = document.getElementById('s-label').value.trim() || 'Week 01';
+  const entry = {
+    id: Date.now(),
+    project,
+    label,
+    filename,
+    liveUrl,
+    date: new Date().toISOString(),
+    formData: captureFormData()
+  };
+  const hist = getHistory();
+  hist.unshift(entry);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(hist.slice(0, 10))); } catch(_) {}
+}
+
+function captureFormData() {
+  return {
+    project:  document.getElementById('s-project').value,
+    label:    document.getElementById('s-label').value,
+    signoff:  document.getElementById('s-signoff').value,
+    sender:   document.getElementById('s-sender').value,
+    headline: document.getElementById('f-headline').value,
+    intro:    document.getElementById('f-intro').value,
+    bullets:  document.getElementById('f-bullets').value,
+    next:     document.getElementById('f-next').value,
+    cPage:    document.getElementById('c-page').value,
+    cContent: document.getElementById('c-content').value,
+    cNext:    document.getElementById('c-next').value,
+    cFooter:  document.getElementById('c-footer').value,
+    cDot:     document.getElementById('c-dot').value,
+    filename: document.getElementById('s-filename').value
+  };
+}
+
+function restoreFormData(d) {
+  document.getElementById('s-project').value  = d.project  || '';
+  document.getElementById('s-label').value    = d.label    || '';
+  document.getElementById('s-signoff').value  = d.signoff  || '';
+  document.getElementById('s-sender').value   = d.sender   || '';
+  document.getElementById('f-headline').value = d.headline || '';
+  document.getElementById('f-intro').value    = d.intro    || '';
+  document.getElementById('f-bullets').value  = d.bullets  || '';
+  document.getElementById('f-next').value     = d.next     || '';
+  document.getElementById('c-page').value     = d.cPage    || '#f5f4f0';
+  document.getElementById('c-content').value  = d.cContent || '#ffffff';
+  document.getElementById('c-next').value     = d.cNext    || '#f9f8f4';
+  document.getElementById('c-footer').value   = d.cFooter  || '#1a1a18';
+  document.getElementById('c-dot').value      = d.cDot     || '#1a1a18';
+  document.getElementById('s-filename').value = d.filename || '';
+}
+
+function loadFromHistory(id) {
+  const entry = getHistory().find(e => e.id === id);
+  if (!entry) return;
+  restoreFormData(entry.formData);
+  switchTab('build');
+  autoPreview();
+}
+
+function deleteFromHistory(id) {
+  const hist = getHistory().filter(e => e.id !== id);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(hist)); } catch(_) {}
+  renderHistory();
+}
+
+function renderHistory() {
+  const hist = getHistory();
+  const el = document.getElementById('history-list');
+  if (!hist.length) {
+    el.innerHTML = '<div class="hist-empty">No newsletters published yet. Hit Publish to GitHub to save one here.</div>';
+    return;
+  }
+  el.innerHTML = hist.map(e => {
+    const d = new Date(e.date);
+    const dateStr = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+    return `<div class="hist-item">
+      <div class="hist-meta">
+        <div class="hist-name">${esc(e.project)}</div>
+        <div class="hist-sub">${esc(e.label)} · ${dateStr}</div>
+      </div>
+      <button class="hist-load" onclick="loadFromHistory(${e.id})">Load</button>
+      <button class="hist-del" title="Delete" onclick="deleteFromHistory(${e.id})">×</button>
+    </div>`;
+  }).join('');
+}
 </script>
 
 </body>
