@@ -5,11 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Newsletter Builder</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500&display=swap');
-  @font-face { font-family:'Untimes'; src:url('Untimes-BoldItalic.woff2') format('woff2'),url('Untimes-BoldItalic.woff') format('woff'); font-weight:bold; font-style:italic; }
+  @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500&family=Manrope:wght@400;500;600&display=swap');
 
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{background:#f5f4f0;font-family:'Geist',sans-serif;color:#1a1a18;min-height:100vh;}
+  body{background:#DBE0E3;font-family:'Geist',sans-serif;color:#1a1a18;min-height:100vh;}
 
   /* ── Sidebar ── */
   .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:90;}
@@ -33,7 +32,7 @@
   .font-row{margin-bottom:10px;}
   .font-row label{display:block;font-size:12px;color:#888780;margin-bottom:5px;}
   .font-pick-btn{display:flex;align-items:center;gap:8px;font-family:'Geist Mono',monospace;font-size:11px;color:#888780;border:.5px dashed #d3d1c7;border-radius:4px;padding:8px 12px;cursor:pointer;background:#fafaf8;width:100%;transition:all .15s;}
-  .font-pick-btn:hover{border-color:#888780;background:#f5f4f0;}
+  .font-pick-btn:hover{border-color:#888780;background:#f0f2f5;}
   .font-loaded{font-family:'Geist Mono',monospace;font-size:10px;color:#2d6a4f;margin-top:3px;}
   .font-clear{font-size:10px;color:#c0392b;background:none;border:none;cursor:pointer;padding:0;margin-left:6px;font-family:'Geist Mono',monospace;}
   .s-note{font-size:11px;color:#b4b2a9;line-height:1.5;margin-top:6px;}
@@ -43,10 +42,10 @@
 
   /* ── Topbar ── */
   .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;}
-  .page-title{font-family:'Untimes',Georgia,serif;font-style:italic;font-weight:700;font-size:26px;color:#1a1a18;}
-  .page-sub{font-family:'Geist Mono',monospace;font-size:11px;color:#888780;letter-spacing:.06em;margin-top:2px;}
+  .page-title{font-family:'Manrope',sans-serif;font-weight:700;font-size:22px;color:#1a1a18;letter-spacing:-.02em;}
+  .page-sub{font-family:'Manrope',sans-serif;font-size:11px;font-weight:500;color:#888780;letter-spacing:.02em;margin-top:3px;}
   .settings-btn{display:flex;align-items:center;gap:7px;font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#888780;background:#fff;border:.5px solid #d3d1c7;border-radius:4px;padding:9px 14px;cursor:pointer;transition:all .15s;}
-  .settings-btn:hover{background:#f5f4f0;color:#1a1a18;}
+  .settings-btn:hover{background:#f0f2f5;color:#1a1a18;}
 
   /* ── Tabs ── */
   .tab-bar{background:#fff;border-radius:4px 4px 0 0;border:.5px solid #e8e6df;border-bottom:none;padding:0 36px;display:flex;}
@@ -106,7 +105,7 @@
 <!-- Settings Sidebar -->
 <div class="sidebar" id="sidebar">
   <div class="sidebar-head">
-    <div class="sidebar-title">Settings</div>
+    <div class="sidebar-title">Design</div>
     <button class="sidebar-close" onclick="closeSidebar()">×</button>
   </div>
 
@@ -129,7 +128,7 @@
 
   <div class="s-section">
     <div class="s-section-title">Fonts</div>
-    <p class="s-note" style="margin-bottom:14px;">Upload .woff, .woff2, or .ttf files. They'll be embedded in the downloaded HTML so the file is fully self-contained.</p>
+    <p class="s-note" style="margin-bottom:14px;">Defaults: FH Oscar (headline) and Manrope (body). Upload your own .woff / .woff2 / .ttf to override — they'll be embedded so the output file is fully self-contained.</p>
     <div class="font-row">
       <label>Header font <span style="color:#b4b2a9">(headlines, sign-off)</span></label>
       <button class="font-pick-btn" onclick="pickFont('header')">⊕ Choose file</button>
@@ -169,11 +168,11 @@
   <div class="topbar">
     <div>
       <div class="page-title">Newsletter Builder</div>
-      <div class="page-sub">Generic edition — any project</div>
+      <div class="page-sub">IDEO Edition — Any Project</div>
     </div>
     <button class="settings-btn" onclick="openSidebar()">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.2" stroke="currentColor" stroke-width="1.1"/><path d="M7 1v1.2M7 11.8V13M1 7h1.2M11.8 7H13M2.757 2.757l.849.849M10.394 10.394l.849.849M2.757 11.243l.849-.849M10.394 3.606l.849-.849" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
-      Settings
+      Design
     </button>
   </div>
 
@@ -185,6 +184,29 @@
 
   <!-- Build tab -->
   <div id="build-panel">
+
+    <div class="card">
+      <div class="section-lbl">Header image</div>
+      <div class="field" style="margin-bottom:0;">
+        <div class="photo-drop" id="header-drop" onclick="document.getElementById('header-input').click()" ondragover="e=event;e.preventDefault();e.currentTarget.classList.add('drag-over')" ondragleave="event.currentTarget.classList.remove('drag-over')" ondrop="dropHeader(event)" style="padding:0;border:none;background:none;">
+          <div id="header-preview-wrap" style="display:none;position:relative;width:100%;height:160px;border-radius:4px;overflow:hidden;background:#d6d8db;">
+            <img id="header-preview-img" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+            <div style="position:absolute;inset:0;background:rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;">
+              <span style="font-family:'Geist Mono',monospace;font-size:11px;color:#fff;letter-spacing:.06em;opacity:.85;">Click to replace</span>
+            </div>
+          </div>
+          <div id="header-empty" style="border:.5px dashed #d3d1c7;border-radius:4px;padding:22px;text-align:center;background:#fafaf8;cursor:pointer;transition:all .15s;">
+            <div class="photo-drop-ico">⊕</div>
+            <div class="photo-drop-lbl">Upload header image — or drag it here</div>
+            <div class="photo-drop-lbl" style="margin-top:3px;font-size:10px;">Full-width · 280px tall · object-fit cover</div>
+          </div>
+        </div>
+        <input type="file" id="header-input" accept="image/*" style="display:none" onchange="setHeader(this.files[0])"/>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px;" id="header-remove-row" style="display:none;">
+          <button style="font-family:'Geist Mono',monospace;font-size:11px;color:#c0392b;background:none;border:none;cursor:pointer;padding:0;" onclick="clearHeader()">Remove image</button>
+        </div>
+      </div>
+    </div>
 
     <div class="card">
       <div class="section-lbl">Headline &amp; intro</div>
@@ -249,11 +271,12 @@
 // ── State ─────────────────────────────────────────────────────────────────
 const fonts = { header: null, body: null, label: null }; // { dataUrl, name, ext }
 const photos = []; // { dataUrl, name }
+let headerImage = null; // { dataUrl }
 let currentFontSlot = null;
 let previewDebounce = null;
 
-const REPO = 'rnicolau-ideo/Soulgreen-weeklynote-';
-const PAGES_BASE = 'https://rnicolau-ideo.github.io/Soulgreen-weeklynote-/';
+const REPO = 'rnicolau-ideo/Weeknote_tool';
+const PAGES_BASE = 'https://rnicolau-ideo.github.io/Weeknote_tool/';
 
 // ── Sidebar ───────────────────────────────────────────────────────────────
 function openSidebar() {
@@ -265,15 +288,37 @@ function closeSidebar() {
   document.getElementById('overlay').classList.remove('show');
 }
 
-// ── Tabs ──────────────────────────────────────────────────────────────────
-function switchTab(name) {
-  document.getElementById('tab-build').classList.toggle('active', name === 'build');
-  document.getElementById('tab-preview').classList.toggle('active', name === 'preview');
-  document.getElementById('build-panel').style.display = name === 'build' ? 'block' : 'none';
-  document.getElementById('preview-panel').style.display = name === 'preview' ? 'block' : 'none';
-  if (name === 'preview') updatePreview();
+// ── Header image ──────────────────────────────────────────────────────────
+function setHeader(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    headerImage = { dataUrl: e.target.result };
+    document.getElementById('header-preview-img').src = e.target.result;
+    document.getElementById('header-preview-wrap').style.display = 'block';
+    document.getElementById('header-empty').style.display = 'none';
+    document.getElementById('header-remove-row').style.display = 'flex';
+    autoPreview();
+  };
+  reader.readAsDataURL(file);
 }
 
+function dropHeader(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  setHeader(e.dataTransfer.files[0]);
+}
+
+function clearHeader() {
+  headerImage = null;
+  document.getElementById('header-preview-wrap').style.display = 'none';
+  document.getElementById('header-empty').style.display = 'block';
+  document.getElementById('header-remove-row').style.display = 'none';
+  document.getElementById('header-input').value = '';
+  autoPreview();
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
 // ── Font loading ──────────────────────────────────────────────────────────
 function pickFont(slot) {
   currentFontSlot = slot;
@@ -431,9 +476,9 @@ function generateHTML() {
   const hFF  = fontFaceCSS('header', 'UserHeader');
   const bFF  = fontFaceCSS('body',   'UserBody');
   const lFF  = fontFaceCSS('label',  'UserLabel');
-  const hStack = fonts.header ? "'UserHeader', Georgia, serif"   : "'Untimes', Georgia, serif";
-  const bStack = fonts.body   ? "'UserBody', sans-serif"         : "'Geist', sans-serif";
-  const lStack = fonts.label  ? "'UserLabel', monospace"         : "'Geist Mono', monospace";
+  const hStack = fonts.header ? "'UserHeader', Georgia, serif"        : "'FH Oscar', Georgia, serif";
+  const bStack = fonts.body   ? "'UserBody', sans-serif"              : "'Manrope', sans-serif";
+  const lStack = fonts.label  ? "'UserLabel', monospace"              : "'Geist Mono', monospace";
 
   // Intro paragraphs
   const introParagraphs = introRaw
@@ -460,9 +505,23 @@ function generateHTML() {
     ? nextLines.map(n => `<p style="font-family:${bStack};font-size:14px;font-weight:400;line-height:1.7;color:${textNext === '#f5f4f0' ? 'rgba(255,255,255,0.75)' : '#444441'};margin-bottom:8px;">• ${esc(n.trim())}</p>`).join('')
     : `<p style="font-family:${bStack};font-size:14px;color:${subNext};">Coming soon.</p>`;
 
-  // Untimes fallback (only included if header font NOT uploaded)
-  const unimesImport = fonts.header ? '' : `@font-face{font-family:'Untimes';src:url('Untimes-BoldItalic.woff2') format('woff2'),url('Untimes-BoldItalic.woff') format('woff');font-weight:bold;font-style:italic;}`;
-  const geistImport = (fonts.body || fonts.label) ? '' : `@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500&display=swap');`;
+  // Google Fonts for body/label (Manrope + Geist Mono) — skipped if custom fonts uploaded
+  const geistImport = fonts.label ? '' : `@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap');`;
+  const manropeImport = fonts.body ? '' : `@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&display=swap');`;
+
+  // Header image block
+  const headerOverlay = `<div style="position:absolute;top:0;left:0;right:0;padding:22px 36px;display:flex;align-items:baseline;justify-content:space-between;z-index:2;">
+      <div style="font-family:${hStack};font-style:italic;font-weight:700;font-size:22px;color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.4);">${esc(project)}</div>
+      <div style="font-family:${lStack};font-size:10px;color:rgba(255,255,255,.85);letter-spacing:.06em;text-transform:uppercase;text-shadow:0 1px 4px rgba(0,0,0,.3);">${esc(label)}</div>
+    </div>`;
+  const headerBlock = headerImage
+    ? `<div style="width:100%;position:relative;overflow:hidden;height:280px;">
+    <img src="${headerImage.dataUrl}" alt="" style="width:100%;height:280px;object-fit:cover;object-position:center;display:block;"/>
+    ${headerOverlay}
+  </div>`
+    : `<div style="width:100%;position:relative;height:280px;background:${cFooter};">
+    ${headerOverlay}
+  </div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -472,7 +531,7 @@ function generateHTML() {
 <title>${esc(project)} — ${esc(label)}</title>
 <style>
 ${geistImport}
-${unimesImport}
+${manropeImport}
 ${hFF}${bFF}${lFF}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:${cPage};font-family:${bStack};color:${textContent};}
@@ -483,10 +542,7 @@ body{background:${cPage};font-family:${bStack};color:${textContent};}
 <div class="wrap">
 
   <!-- HEADER -->
-  <div style="background:${cFooter};padding:22px 36px;display:flex;align-items:baseline;justify-content:space-between;">
-    <div style="font-family:${hStack};font-style:italic;font-weight:700;font-size:22px;color:${textFooter};">${esc(project)}</div>
-    <div style="font-family:${lStack};font-size:10px;color:${subFooter};letter-spacing:.06em;text-transform:uppercase;">${esc(label)}</div>
-  </div>
+  ${headerBlock}
 
   <!-- WELCOME -->
   <div style="padding:48px 48px 36px;border-bottom:1px solid ${borderC};">
