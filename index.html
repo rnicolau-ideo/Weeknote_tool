@@ -639,7 +639,9 @@ async function publishToGitHub() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repo: REPO, filename, content: encoded })
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch(_) { throw new Error(`Server returned: ${text.slice(0, 120) || res.status}`); }
     if (!res.ok) throw new Error(data.error || res.status);
 
     const liveUrl = PAGES_BASE + filename;
