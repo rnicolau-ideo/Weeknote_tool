@@ -3,7 +3,7 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors({
-  origin: ['https://rnicolau-ideo.github.io', 'http://localhost:3000', 'http://localhost:8080'],
+  origin: ['https://projectweeklynotes.com', 'https://www.projectweeklynotes.com', 'https://rnicolau-ideo.github.io', 'http://localhost:3000', 'http://localhost:8080'],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type']
 }));
