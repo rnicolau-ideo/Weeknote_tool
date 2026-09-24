@@ -142,6 +142,11 @@
     <div class="s-section-title">Fonts</div>
     <p class="s-note" style="margin-bottom:14px;">Defaults: FH Oscar (headline) and Manrope (body). Upload your own .woff / .woff2 / .ttf to override — they'll be embedded so the output file is fully self-contained.</p>
     <div class="font-row">
+      <label>Project name font <span style="color:#b4b2a9">(header overlay)</span></label>
+      <button class="font-pick-btn" onclick="pickFont('project')">⊕ Choose file</button>
+      <div class="font-loaded" id="font-project-name" style="display:none;"></div>
+    </div>
+    <div class="font-row">
       <label>Header font <span style="color:#b4b2a9">(headlines, sign-off)</span></label>
       <button class="font-pick-btn" onclick="pickFont('header')">⊕ Choose file</button>
       <div class="font-loaded" id="font-header-name" style="display:none;"></div>
@@ -285,7 +290,7 @@
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────
-const fonts = { header: null, body: null, label: null }; // { dataUrl, name, ext }
+const fonts = { project: null, header: null, body: null, label: null }; // { dataUrl, name, ext }
 const photos = []; // { dataUrl, name }
 let headerImage = null; // { dataUrl }
 let currentFontSlot = null;
@@ -484,9 +489,11 @@ function generateHTML() {
   const mutedC      = autoMuted(cContent);
 
   // Font faces & stacks
+  const pFF  = fontFaceCSS('project', 'UserProject');
   const hFF  = fontFaceCSS('header', 'UserHeader');
   const bFF  = fontFaceCSS('body',   'UserBody');
   const lFF  = fontFaceCSS('label',  'UserLabel');
+  const pStack = fonts.project ? "'UserProject', Georgia, serif"        : null; // falls back to hStack when null
   const hStack = fonts.header ? "'UserHeader', Georgia, serif"        : "'FH Oscar', Georgia, serif";
   const bStack = fonts.body   ? "'UserBody', sans-serif"              : "'Manrope', sans-serif";
   const lStack = fonts.label  ? "'UserLabel', monospace"              : "'Geist Mono', monospace";
@@ -522,7 +529,7 @@ function generateHTML() {
 
   // Header image block
   const headerOverlay = `<div style="position:absolute;top:0;left:0;right:0;padding:22px 36px;display:flex;align-items:baseline;justify-content:space-between;z-index:2;">
-      <div style="font-family:${hStack};font-style:italic;font-weight:700;font-size:22px;color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.4);">${esc(project)}</div>
+      <div style="font-family:${pStack || hStack};font-style:italic;font-weight:700;font-size:22px;color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.4);">${esc(project)}</div>
       <div style="font-family:${lStack};font-size:10px;color:rgba(255,255,255,.85);letter-spacing:.06em;text-transform:uppercase;text-shadow:0 1px 4px rgba(0,0,0,.3);">${esc(label)}</div>
     </div>`;
   const headerBlock = headerImage
@@ -543,7 +550,7 @@ function generateHTML() {
 <style>
 ${geistImport}
 ${manropeImport}
-${hFF}${bFF}${lFF}
+${pFF}${hFF}${bFF}${lFF}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:${cPage};font-family:${bStack};color:${textContent};}
 .wrap{max-width:620px;margin:0 auto;background:${cContent};}
