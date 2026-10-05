@@ -529,7 +529,7 @@ function generateHTML() {
 
   // Header image block
   const headerOverlay = `<div style="position:absolute;top:0;left:0;right:0;padding:22px 36px;display:flex;align-items:baseline;justify-content:space-between;z-index:2;">
-      <div style="font-family:${pStack || hStack};font-style:italic;font-weight:700;font-size:22px;color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.4);">${esc(project)}</div>
+      <div style="font-family:${pStack || hStack};font-weight:700;font-size:22px;color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.4);">${esc(project)}</div>
       <div style="font-family:${lStack};font-size:10px;color:rgba(255,255,255,.85);letter-spacing:.06em;text-transform:uppercase;text-shadow:0 1px 4px rgba(0,0,0,.3);">${esc(label)}</div>
     </div>`;
   const headerBlock = headerImage
