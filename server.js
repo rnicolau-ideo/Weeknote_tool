@@ -21,7 +21,7 @@ try {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    storageBucket: `${serviceAccount.project_id}.appspot.com`
+    storageBucket: 'week-notes.firebasestorage.app'
   });
   bucket = admin.storage().bucket();
   console.log(`Firebase Admin initialised for project: ${serviceAccount.project_id}`);
