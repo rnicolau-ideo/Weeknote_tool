@@ -727,7 +727,13 @@ async function publishToGitHub() {
 
     const liveUrl = data.url || `${PAGES_BASE}view?project=${projectId}&note=${noteSlug}`;
     msg.className = 'pub-msg ok';
-    msg.innerHTML = `Published! <a class="pub-link" href="${liveUrl}" target="_blank">${liveUrl}</a>`;
+    msg.textContent = 'Published! ';
+    const pubLink = document.createElement('a');
+    pubLink.className = 'pub-link';
+    pubLink.href = liveUrl;
+    pubLink.target = '_blank';
+    pubLink.textContent = liveUrl;
+    msg.appendChild(pubLink);
     saveToHistory(noteSlug, liveUrl);
     window._lastPublishedUrl = liveUrl;
     document.getElementById('send-panel').classList.add('show');
