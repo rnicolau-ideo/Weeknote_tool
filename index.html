@@ -127,6 +127,20 @@
   .login-btn svg{flex-shrink:0;}
   .login-err{font-family:'Geist Mono',monospace;font-size:11px;color:#c0392b;margin-top:16px;min-height:16px;}
   .login-note{font-family:'Geist Mono',monospace;font-size:10px;color:#b4b2a9;margin-top:28px;letter-spacing:.03em;}
+
+  /* ── Send to client panel ── */
+  .send-panel{background:#fff;border:.5px solid #e8e6df;border-radius:4px;padding:20px 36px;margin-top:8px;display:none;}
+  .send-panel.show{display:block;}
+  .send-label{font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#888780;margin-bottom:12px;}
+  .send-row{display:flex;gap:8px;align-items:center;}
+  .send-input{flex:1;font-family:'Geist',sans-serif;font-size:13px;color:#1a1a18;background:#fff;border:.5px solid #d3d1c7;border-radius:4px;padding:9px 12px;outline:none;transition:border-color .15s;}
+  .send-input:focus{border-color:#888780;}
+  .send-btn{background:#fff;color:#1a1a18;border:.5px solid #d3d1c7;border-radius:4px;padding:9px 16px;font-family:'Geist',sans-serif;font-size:13px;cursor:pointer;white-space:nowrap;transition:background .15s;}
+  .send-btn:hover{background:#f5f4f0;}
+  .send-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .send-msg{font-family:'Geist Mono',monospace;font-size:11px;margin-top:10px;padding:7px 10px;border-radius:4px;display:none;}
+  .send-msg.ok{background:#d4edda;color:#2d6a4f;display:block;}
+  .send-msg.err{background:#f8d7da;color:#c0392b;display:block;}
 </style>
 </head>
 <body>
@@ -324,6 +338,16 @@
     <button class="btn" onclick="publishToGitHub()">Publish</button>
     <button class="btn-sm" onclick="downloadHTML()">Download HTML</button>
     <div class="pub-msg" id="pub-msg"></div>
+  </div>
+
+  <!-- Send to client (shown after successful publish) -->
+  <div class="send-panel" id="send-panel">
+    <div class="send-label">Send to client</div>
+    <div class="send-row">
+      <input class="send-input" id="send-email" type="email" placeholder="client@example.com"/>
+      <button class="send-btn" id="send-btn" onclick="sendMagicLink()">Send link</button>
+    </div>
+    <div class="send-msg" id="send-msg"></div>
   </div>
 
 </div>
@@ -705,9 +729,40 @@ async function publishToGitHub() {
     msg.className = 'pub-msg ok';
     msg.innerHTML = `Published! <a class="pub-link" href="${liveUrl}" target="_blank">${liveUrl}</a>`;
     saveToHistory(noteSlug, liveUrl);
+    window._lastPublishedUrl = liveUrl;
+    document.getElementById('send-panel').classList.add('show');
+    document.getElementById('send-msg').className = 'send-msg';
   } catch(e) {
     msg.className = 'pub-msg err';
     msg.textContent = 'Publish failed: ' + e.message;
+  }
+}
+
+// ── Send magic link to client ─────────────────────────────────────────────
+async function sendMagicLink() {
+  const email   = document.getElementById('send-email').value.trim();
+  const msg     = document.getElementById('send-msg');
+  const btn     = document.getElementById('send-btn');
+  const noteUrl = window._lastPublishedUrl;
+
+  if (!email) { msg.className='send-msg err'; msg.textContent='Enter a client email address.'; return; }
+  if (!noteUrl) { msg.className='send-msg err'; msg.textContent='Publish a newsletter first.'; return; }
+  if (!window._sendSignInLink) { msg.className='send-msg err'; msg.textContent='Firebase not ready — try again in a moment.'; return; }
+
+  btn.disabled = true;
+  msg.className = 'send-msg ok';
+  msg.textContent = 'Sending…';
+
+  try {
+    await window._sendSignInLink(email, noteUrl);
+    localStorage.setItem('emailForSignIn', email);
+    msg.textContent = `Link sent to ${email} — they can click it to view the newsletter.`;
+    document.getElementById('send-email').value = '';
+  } catch(e) {
+    msg.className = 'send-msg err';
+    msg.textContent = 'Failed to send: ' + e.message;
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -810,7 +865,7 @@ function renderHistory() {
 <!-- Firebase Auth (module) -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged }
+  import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged, sendSignInLinkToEmail }
     from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -826,6 +881,14 @@ function renderHistory() {
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ hd: 'ideo.com' });
+
+  // Expose magic link sender to non-module script
+  window._sendSignInLink = async (email, noteUrl) => {
+    await sendSignInLinkToEmail(auth, email, {
+      url: noteUrl,
+      handleCodeInApp: true
+    });
+  };
 
   window.handleAuthAction = async () => {
     if (auth.currentUser) {
