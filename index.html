@@ -115,21 +115,47 @@
   .hist-load:hover{background:#e8e6df;}
   .hist-del{background:none;border:none;color:#b4b2a9;font-size:16px;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1;transition:color .15s;}
   .hist-del:hover{color:#c0392b;}
+
+  /* ── Login gate ── */
+  #login-gate{position:fixed;inset:0;background:#DBE0E3;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;}
+  #login-gate.hidden{display:none;}
+  .login-card{background:#fff;border:.5px solid #e8e6df;border-radius:8px;padding:56px 48px 48px;text-align:center;max-width:380px;width:90%;}
+  .login-logo{font-family:'Manrope',sans-serif;font-weight:700;font-size:20px;color:#1a1a18;letter-spacing:-.02em;margin-bottom:6px;}
+  .login-sub{font-family:'Manrope',sans-serif;font-size:11px;font-weight:500;color:#888780;letter-spacing:.02em;margin-bottom:40px;}
+  .login-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#1a1a18;color:#f5f4f0;border:none;border-radius:4px;padding:13px 22px;font-family:'Geist',sans-serif;font-size:14px;cursor:pointer;transition:opacity .15s;}
+  .login-btn:hover{opacity:.85;}
+  .login-btn svg{flex-shrink:0;}
+  .login-err{font-family:'Geist Mono',monospace;font-size:11px;color:#c0392b;margin-top:16px;min-height:16px;}
+  .login-note{font-family:'Geist Mono',monospace;font-size:10px;color:#b4b2a9;margin-top:28px;letter-spacing:.03em;}
 </style>
 </head>
 <body>
 
-<!-- Auth bar -->
-<div class="auth-bar" id="auth-bar">
-  <span class="auth-user" id="auth-user-label">Not signed in</span>
-  <button class="auth-btn" id="auth-action-btn" onclick="handleAuthAction()">Sign in with Google</button>
+<!-- Login gate (shown until Firebase confirms auth) -->
+<div id="login-gate">
+  <div class="login-card">
+    <div class="login-logo">Newsletter Builder</div>
+    <div class="login-sub">IDEO Edition — Any Project</div>
+    <button class="login-btn" id="login-gate-btn" onclick="handleAuthAction()">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+      Sign in with Google
+    </button>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-note">Access restricted to @ideo.com accounts</div>
+  </div>
+</div>
+
+<!-- Auth bar (shown when signed in) -->
+<div class="auth-bar" id="auth-bar" style="display:none;">
+  <span class="auth-user" id="auth-user-label"></span>
+  <button class="auth-btn secondary" onclick="handleAuthAction()">Sign out</button>
 </div>
 
 <!-- Overlay -->
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
 <!-- Settings Sidebar -->
-<div class="sidebar" id="sidebar">
+<div class="sidebar" id="sidebar" style="display:none;">
   <div class="sidebar-head">
     <div class="sidebar-title">Design</div>
     <button class="sidebar-close" onclick="closeSidebar()">×</button>
@@ -188,8 +214,8 @@
   </div>
 </div>
 
-<!-- Main -->
-<div class="main">
+<!-- Main (hidden until authenticated) -->
+<div class="main" id="app-main" style="display:none;">
 
   <div class="topbar">
     <div>
@@ -801,35 +827,44 @@ function renderHistory() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ hd: 'ideo.com' });
 
-  // Expose auth action to the non-module script
   window.handleAuthAction = async () => {
     if (auth.currentUser) {
       await signOut(auth);
     } else {
+      document.getElementById('login-err').textContent = '';
       try {
-        await signInWithPopup(auth, provider);
+        const result = await signInWithPopup(auth, provider);
+        if (!result.user.email?.endsWith('@ideo.com')) {
+          await signOut(auth);
+          document.getElementById('login-err').textContent = 'Access is restricted to @ideo.com accounts.';
+        }
       } catch(err) {
-        console.error('Sign-in failed:', err.message);
-        alert('Sign-in failed: ' + err.message);
+        document.getElementById('login-err').textContent = 'Sign-in failed: ' + err.message;
       }
     }
   };
 
   onAuthStateChanged(auth, async (user) => {
-    const label  = document.getElementById('auth-user-label');
-    const btn    = document.getElementById('auth-action-btn');
-    if (user) {
+    const gate    = document.getElementById('login-gate');
+    const authBar = document.getElementById('auth-bar');
+    const appMain = document.getElementById('app-main');
+    const sidebar = document.getElementById('sidebar');
+
+    if (user && user.email?.endsWith('@ideo.com')) {
       window._firebaseToken = await user.getIdToken();
-      // Refresh token silently every 55 min (tokens expire after 60)
       setInterval(async () => { window._firebaseToken = await user.getIdToken(true); }, 55 * 60 * 1000);
-      label.textContent = user.email;
-      btn.textContent   = 'Sign out';
-      btn.classList.add('secondary');
+      document.getElementById('auth-user-label').textContent = user.email;
+      gate.classList.add('hidden');
+      authBar.style.display = 'flex';
+      appMain.style.display = 'block';
+      sidebar.style.display = '';
     } else {
+      if (user) await signOut(auth); // signed in but wrong domain
       window._firebaseToken = null;
-      label.textContent = 'Not signed in';
-      btn.textContent   = 'Sign in with Google';
-      btn.classList.remove('secondary');
+      gate.classList.remove('hidden');
+      authBar.style.display = 'none';
+      appMain.style.display = 'none';
+      sidebar.style.display = 'none';
     }
   });
 </script>
