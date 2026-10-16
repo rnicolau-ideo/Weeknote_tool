@@ -31,15 +31,15 @@ try {
 }
 
 // ── Link token (HMAC-SHA256) ──────────────────────────────────────────────
-function linkToken(projectId, noteSlug) {
+function linkToken(projectId, noteSlug, password = '') {
   const secret = process.env.LINK_SECRET || 'dev-secret-change-in-production';
-  return crypto.createHmac('sha256', secret).update(`${projectId}:${noteSlug}`).digest('hex');
+  return crypto.createHmac('sha256', secret).update(`${projectId}:${noteSlug}:${password}`).digest('hex');
 }
 
-function verifyLinkToken(projectId, noteSlug, token) {
+function verifyLinkToken(projectId, noteSlug, token, password = '') {
   if (!token || token.length !== 64) return false;
   try {
-    const expected = Buffer.from(linkToken(projectId, noteSlug), 'hex');
+    const expected = Buffer.from(linkToken(projectId, noteSlug, password), 'hex');
     const actual   = Buffer.from(token, 'hex');
     return crypto.timingSafeEqual(expected, actual);
   } catch { return false; }
@@ -68,7 +68,7 @@ async function requireIdeoAuth(req, res, next) {
 app.post('/api/publish-note', requireIdeoAuth, async (req, res) => {
   if (!bucket) return res.status(500).json({ error: 'Firebase Storage not initialised' });
 
-  const { projectId, noteSlug, htmlContent } = req.body;
+  const { projectId, noteSlug, htmlContent, password = '' } = req.body;
   if (!projectId || !noteSlug || !htmlContent) {
     return res.status(400).json({ error: 'projectId, noteSlug and htmlContent are required' });
   }
@@ -80,10 +80,11 @@ app.post('/api/publish-note', requireIdeoAuth, async (req, res) => {
       contentType: 'text/html',
       metadata: { cacheControl: 'private, max-age=0' }
     });
-    const token = linkToken(projectId, noteSlug);
+    const token = linkToken(projectId, noteSlug, password);
+    const locked = password ? '&locked=1' : '';
     res.json({
       success: true,
-      url: `https://projectweeklynotes.com/view?project=${projectId}&note=${noteSlug}&token=${token}`
+      url: `https://projectweeklynotes.com/view?project=${projectId}&note=${noteSlug}&token=${token}${locked}`
     });
   } catch (err) {
     console.error(err);
@@ -119,17 +120,9 @@ app.get('/api/get-note', async (req, res) => {
   }
 });
 
-// ── Client view route — token-gated direct serve ─────────────────────────
-app.get('/view', async (req, res) => {
-  const { project, note, token } = req.query;
-  if (!project || !note || !token) {
-    return res.status(400).send('Invalid link — please ask for a new one.');
-  }
-  if (!verifyLinkToken(project, note, token)) {
-    return res.status(403).send('This link is not valid. Please ask for a new one.');
-  }
+// ── Shared helper: fetch note from storage and send ───────────────────────
+async function serveNote(project, note, res) {
   if (!bucket) return res.status(500).send('Storage unavailable');
-
   try {
     const file = bucket.file(`notes/${project}/${note}.html`);
     const [contents] = await file.download();
@@ -138,6 +131,72 @@ app.get('/view', async (req, res) => {
   } catch (err) {
     res.status(404).send('Newsletter not found.');
   }
+}
+
+// ── Password gate HTML ────────────────────────────────────────────────────
+function passwordGateHtml(project, note, token, error = '') {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Weekly Note</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#DBE0E3;font-family:'Geist',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .card{background:#fff;border:0.5px solid #e8e6df;border-radius:8px;padding:52px 44px 44px;max-width:360px;width:90%;text-align:center;}
+  .title{font-family:'Manrope',system-ui,sans-serif;font-weight:700;font-size:20px;color:#1a1a18;letter-spacing:-.02em;margin-bottom:6px;}
+  .sub{font-size:12px;color:#888780;margin-bottom:28px;line-height:1.5;}
+  .input{width:100%;font-size:14px;color:#1a1a18;border:0.5px solid #d3d1c7;border-radius:4px;padding:11px 14px;outline:none;margin-bottom:10px;font-family:inherit;}
+  .input:focus{border-color:#888780;}
+  .btn{width:100%;background:#1a1a18;color:#f5f4f0;border:none;border-radius:4px;padding:12px;font-size:14px;font-family:inherit;cursor:pointer;}
+  .btn:hover{opacity:.85;}
+  .err{font-size:12px;color:#c0392b;margin-top:10px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="title">Weekly Note</div>
+  <div class="sub">This newsletter is password protected.</div>
+  <form method="POST" action="/view">
+    <input type="hidden" name="project" value="${project}"/>
+    <input type="hidden" name="note" value="${note}"/>
+    <input type="hidden" name="token" value="${token}"/>
+    <input class="input" type="password" name="password" placeholder="Enter password" autofocus/>
+    <button class="btn" type="submit">View newsletter</button>
+    ${error ? `<div class="err">${error}</div>` : ''}
+  </form>
+</div>
+</body>
+</html>`;
+}
+
+// ── Client view route — token-gated, optional password ───────────────────
+app.get('/view', async (req, res) => {
+  const { project, note, token, locked } = req.query;
+  if (!project || !note || !token) {
+    return res.status(400).send('Invalid link — please ask for a new one.');
+  }
+  if (locked === '1') {
+    return res.send(passwordGateHtml(project, note, token));
+  }
+  if (!verifyLinkToken(project, note, token)) {
+    return res.status(403).send('This link is not valid. Please ask for a new one.');
+  }
+  await serveNote(project, note, res);
+});
+
+app.use(express.urlencoded({ extended: false }));
+
+app.post('/view', async (req, res) => {
+  const { project, note, token, password = '' } = req.body;
+  if (!project || !note || !token) {
+    return res.status(400).send('Invalid request.');
+  }
+  if (!verifyLinkToken(project, note, token, password)) {
+    return res.status(403).send(passwordGateHtml(project, note, token, 'Incorrect password — please try again.'));
+  }
+  await serveNote(project, note, res);
 });
 
 // ── Legacy GitHub publish proxy (kept as fallback) ────────────────────────

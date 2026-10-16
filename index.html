@@ -177,6 +177,7 @@
     <div class="s-field"><label>Issue / date label</label><input type="text" id="s-label" value="Week 01" oninput="autoPreview()"/></div>
     <div class="s-field"><label>Sign-off line</label><input type="text" id="s-signoff" value="See you next week!" oninput="autoPreview()"/></div>
     <div class="s-field"><label>Sender name</label><input type="text" id="s-sender" value="The team" oninput="autoPreview()"/></div>
+    <div class="s-field"><label>Project password <span style="color:#bbb;font-size:11px">(optional)</span></label><input type="password" id="s-password" placeholder="Leave blank for no password"/></div>
   </div>
 
   <div class="s-section">
@@ -713,7 +714,7 @@ async function publishToGitHub() {
     const res = await fetch(API_URL + '/api/publish-note', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ projectId, noteSlug, htmlContent })
+      body: JSON.stringify({ projectId, noteSlug, htmlContent, password: document.getElementById('s-password').value })
     });
     const text = await res.text();
     let data = {};
