@@ -96,6 +96,14 @@
   .pub-msg.err{background:#f8d7da;color:#c0392b;display:block;}
   .pub-link{color:#2d6a4f;text-decoration:underline;word-break:break-all;}
 
+  /* ── Auth bar ── */
+  .auth-bar{background:#fff;border-bottom:.5px solid #e8e6df;padding:10px 24px;display:flex;align-items:center;justify-content:flex-end;gap:12px;font-family:'Geist',sans-serif;font-size:13px;}
+  .auth-user{color:#888780;}
+  .auth-btn{background:#1a1a18;color:#f5f4f0;border:none;border-radius:4px;padding:7px 16px;font-family:'Geist',sans-serif;font-size:12px;cursor:pointer;transition:opacity .15s;}
+  .auth-btn:hover{opacity:.8;}
+  .auth-btn.secondary{background:#fff;color:#1a1a18;border:.5px solid #d3d1c7;}
+  .auth-btn.secondary:hover{background:#f5f4f0;}
+
   /* ── History ── */
   .hist-empty{font-family:'Geist Mono',monospace;font-size:11px;color:#b4b2a9;padding:12px 0;}
   .hist-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:.5px solid #e8e6df;}
@@ -110,6 +118,12 @@
 </style>
 </head>
 <body>
+
+<!-- Auth bar -->
+<div class="auth-bar" id="auth-bar">
+  <span class="auth-user" id="auth-user-label">Not signed in</span>
+  <button class="auth-btn" id="auth-action-btn" onclick="handleAuthAction()">Sign in with Google</button>
+</div>
 
 <!-- Overlay -->
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -165,11 +179,11 @@
   </div>
 
   <div class="s-section">
-    <div class="s-section-title">Publish to GitHub</div>
+    <div class="s-section-title">Publish</div>
     <div class="s-field">
-      <label>Filename <span style="color:#b4b2a9">(auto-generated)</span></label>
-      <input type="text" id="s-filename" placeholder="week01.html" style="color:#888780;"/>
-      <p class="s-note">Leave blank to auto-generate from the issue label.</p>
+      <label>Note slug <span style="color:#b4b2a9">(auto-generated)</span></label>
+      <input type="text" id="s-filename" placeholder="week01" style="color:#888780;"/>
+      <p class="s-note">Leave blank to auto-generate from the issue label. Used as the note URL.</p>
     </div>
   </div>
 </div>
@@ -630,31 +644,41 @@ function downloadHTML() {
   URL.revokeObjectURL(a.href);
 }
 
-// ── GitHub Publish ────────────────────────────────────────────────────────
+// ── Publish ───────────────────────────────────────────────────────────────
 async function publishToGitHub() {
   const msg = document.getElementById('pub-msg');
-  const filename = getFilename();
-  const html = generateHTML();
-  const encoded = btoa(unescape(encodeURIComponent(html)));
+  const token = window._firebaseToken;
+
+  if (!token) {
+    msg.className = 'pub-msg err';
+    msg.textContent = 'Please sign in with your IDEO Google account first.';
+    return;
+  }
+
+  const project  = document.getElementById('s-project').value.trim() || 'project';
+  const label    = document.getElementById('s-label').value.trim() || 'Week 01';
+  const noteSlug = (document.getElementById('s-filename').value.trim() || label.toLowerCase().replace(/\s+/g, '')).replace(/\.html$/, '');
+  const projectId = project.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const htmlContent = generateHTML();
 
   msg.className = 'pub-msg ok';
   msg.textContent = 'Publishing…';
 
   try {
-    const res = await fetch(API_URL + '/publish', {
+    const res = await fetch(API_URL + '/api/publish-note', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ repo: REPO, filename, content: encoded })
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ projectId, noteSlug, htmlContent })
     });
     const text = await res.text();
     let data = {};
     try { data = JSON.parse(text); } catch(_) { throw new Error(`Server returned: ${text.slice(0, 120) || res.status}`); }
     if (!res.ok) throw new Error(data.error || res.status);
 
-    const liveUrl = PAGES_BASE + filename;
+    const liveUrl = data.url || `${PAGES_BASE}view?project=${projectId}&note=${noteSlug}`;
     msg.className = 'pub-msg ok';
-    msg.innerHTML = `Published! Live in ~30s: <a class="pub-link" href="${liveUrl}" target="_blank">${liveUrl}</a>`;
-    saveToHistory(filename, liveUrl);
+    msg.innerHTML = `Published! <a class="pub-link" href="${liveUrl}" target="_blank">${liveUrl}</a>`;
+    saveToHistory(noteSlug, liveUrl);
   } catch(e) {
     msg.className = 'pub-msg err';
     msg.textContent = 'Publish failed: ' + e.message;
@@ -739,7 +763,7 @@ function renderHistory() {
   const hist = getHistory();
   const el = document.getElementById('history-list');
   if (!hist.length) {
-    el.innerHTML = '<div class="hist-empty">No newsletters published yet. Hit Publish to GitHub to save one here.</div>';
+    el.innerHTML = '<div class="hist-empty">No newsletters published yet. Sign in and hit Publish to save one here.</div>';
     return;
   }
   el.innerHTML = hist.map(e => {
@@ -755,6 +779,59 @@ function renderHistory() {
     </div>`;
   }).join('');
 }
+</script>
+
+<!-- Firebase Auth (module) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCP6NSkcs1a6TisyNgPG8wXNsISIIDNUzg",
+    authDomain: "week-notes.firebaseapp.com",
+    projectId: "week-notes",
+    storageBucket: "week-notes.firebasestorage.app",
+    messagingSenderId: "976713620391",
+    appId: "1:976713620391:web:f7b037ca4b4dddc73d3482"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ hd: 'ideo.com' });
+
+  // Expose auth action to the non-module script
+  window.handleAuthAction = async () => {
+    if (auth.currentUser) {
+      await signOut(auth);
+    } else {
+      try {
+        await signInWithPopup(auth, provider);
+      } catch(err) {
+        console.error('Sign-in failed:', err.message);
+        alert('Sign-in failed: ' + err.message);
+      }
+    }
+  };
+
+  onAuthStateChanged(auth, async (user) => {
+    const label  = document.getElementById('auth-user-label');
+    const btn    = document.getElementById('auth-action-btn');
+    if (user) {
+      window._firebaseToken = await user.getIdToken();
+      // Refresh token silently every 55 min (tokens expire after 60)
+      setInterval(async () => { window._firebaseToken = await user.getIdToken(true); }, 55 * 60 * 1000);
+      label.textContent = user.email;
+      btn.textContent   = 'Sign out';
+      btn.classList.add('secondary');
+    } else {
+      window._firebaseToken = null;
+      label.textContent = 'Not signed in';
+      btn.textContent   = 'Sign in with Google';
+      btn.classList.remove('secondary');
+    }
+  });
 </script>
 
 </body>
