@@ -759,8 +759,9 @@ async function sendMagicLink() {
     msg.textContent = `Link sent to ${email} — they can click it to view the newsletter.`;
     document.getElementById('send-email').value = '';
   } catch(e) {
+    console.error('sendSignInLinkToEmail error:', e);
     msg.className = 'send-msg err';
-    msg.textContent = 'Failed to send: ' + e.message;
+    msg.textContent = 'Failed to send: ' + (e.message || e.code || JSON.stringify(e));
   } finally {
     btn.disabled = false;
   }
