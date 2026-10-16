@@ -102,6 +102,23 @@ app.get('/api/get-note', async (req, res) => {
   }
 });
 
+// ── Public view route — serves note HTML to clients ──────────────────────
+app.get('/view', async (req, res) => {
+  if (!bucket) return res.status(500).send('Storage not initialised');
+
+  const { project, note } = req.query;
+  if (!project || !note) return res.status(400).send('Missing project or note parameter');
+
+  try {
+    const file = bucket.file(`notes/${project}/${note}.html`);
+    const [contents] = await file.download();
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(contents.toString('utf8'));
+  } catch (err) {
+    res.status(404).send('<p style="font-family:sans-serif;padding:40px;color:#888">Note not found.</p>');
+  }
+});
+
 // ── Legacy GitHub publish proxy (kept as fallback) ────────────────────────
 app.post('/publish', async (req, res) => {
   const token = process.env.GITHUB_TOKEN;
