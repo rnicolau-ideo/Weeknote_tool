@@ -175,7 +175,6 @@
   <div class="s-section">
     <div class="s-section-title">Identity</div>
     <div class="s-field"><label>Project name</label><input type="text" id="s-project" value="Project Name" oninput="autoPreview()"/></div>
-    <div class="s-field"><label>Issue / date label</label><input type="text" id="s-label" value="Week 01" oninput="autoPreview()"/></div>
     <div class="s-field"><label>Sign-off line</label><input type="text" id="s-signoff" value="See you next week!" oninput="autoPreview()"/></div>
     <div class="s-field"><label>Sender name</label><input type="text" id="s-sender" value="The team" oninput="autoPreview()"/></div>
     <div class="s-field"><label>Project password <span style="color:#bbb;font-size:11px">(optional)</span></label><input type="password" id="s-password" placeholder="Leave blank for no password"/></div>
@@ -243,10 +242,14 @@
   <div id="build-panel">
 
     <div class="card">
-      <div class="section-lbl">Note slug</div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="s-label" oninput="autoPreview()" style="color:#1a1a18;"/>
+      </div>
       <div class="field" style="margin-bottom:0;">
-        <input type="text" id="s-filename" placeholder="week01" style="color:#888780;" oninput="autoPreview()"/>
-        <p class="hint">Leave blank to auto-generate from the issue label. Used in the published URL.</p>
+        <label>Note slug <span style="color:#b4b2a9">(optional)</span></label>
+        <input type="text" id="s-filename" placeholder="auto-generated from date" style="color:#888780;" oninput="autoPreview()"/>
+        <p class="hint">Used in the published URL. Leave blank to auto-generate from the date.</p>
       </div>
     </div>
 
@@ -351,6 +354,9 @@
 <script>
 // ── State ─────────────────────────────────────────────────────────────────
 const fonts = { project: null, header: null, body: null, label: null }; // { dataUrl, name, ext }
+
+// Set today's date as default
+document.getElementById('s-label').value = new Date().toISOString().slice(0, 10);
 const photos = []; // { dataUrl, name }
 let headerImage = null; // { dataUrl }
 let currentFontSlot = null;
@@ -496,11 +502,18 @@ function autoSubtext(bg) { return luminance(bg) > 0.35 ? '#888780' : 'rgba(255,2
 function autoBorder(bg) { return luminance(bg) > 0.35 ? '#e8e6df' : 'rgba(255,255,255,0.12)'; }
 function autoMuted(bg) { return luminance(bg) > 0.35 ? '#444441' : 'rgba(255,255,255,0.75)'; }
 
+function formatDate(val) {
+  if (!val) return '';
+  const [y, m, d] = val.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 function getFilename() {
   const custom = document.getElementById('s-filename').value.trim();
   if (custom) return custom.endsWith('.html') ? custom : custom + '.html';
-  const label = document.getElementById('s-label').value.trim();
-  return label.toLowerCase().replace(/\s+/g,'') + '.html';
+  const dateVal = document.getElementById('s-label').value;
+  if (dateVal) return dateVal.replace(/-/g, '') + '.html'; // e.g. 20261019.html
+  return 'note.html';
 }
 
 function fontFaceCSS(role, fontFamilyName) {
@@ -524,7 +537,7 @@ function buildPhotoGridHTML(photoList) {
 // ── HTML generation ───────────────────────────────────────────────────────
 function generateHTML() {
   const project  = document.getElementById('s-project').value.trim() || 'Project Name';
-  const label    = document.getElementById('s-label').value.trim() || 'Week 01';
+  const label    = formatDate(document.getElementById('s-label').value) || 'Date';
   const signoff  = document.getElementById('s-signoff').value.trim() || 'See you next week!';
   const sender   = document.getElementById('s-sender').value.trim() || 'The team';
   const headline = document.getElementById('f-headline').value.trim() || 'Note headline';
@@ -716,8 +729,8 @@ async function publishToGitHub() {
   }
 
   const project  = document.getElementById('s-project').value.trim() || 'project';
-  const label    = document.getElementById('s-label').value.trim() || 'Week 01';
-  const noteSlug = (document.getElementById('s-filename').value.trim() || label.toLowerCase().replace(/\s+/g, '')).replace(/\.html$/, '');
+  const label    = formatDate(document.getElementById('s-label').value) || 'note';
+  const noteSlug = getFilename().replace(/\.html$/, '');
   const projectId = project.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const htmlContent = generateHTML();
 
@@ -789,7 +802,7 @@ function getHistory() {
 
 function saveToHistory(filename, liveUrl) {
   const project = document.getElementById('s-project').value.trim() || 'Project Name';
-  const label   = document.getElementById('s-label').value.trim() || 'Week 01';
+  const label   = formatDate(document.getElementById('s-label').value) || 'Note';
   const entry = {
     id: Date.now(),
     project,
