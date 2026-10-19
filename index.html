@@ -732,8 +732,11 @@ async function publishToGitHub() {
     });
     const text = await res.text();
     let data = {};
-    try { data = JSON.parse(text); } catch(_) { throw new Error(`Server returned: ${text.slice(0, 120) || res.status}`); }
-    if (!res.ok) throw new Error(data.error || res.status);
+    try { data = JSON.parse(text); } catch(_) { throw new Error('server-parse'); }
+    if (res.status === 413) throw new Error('too-large');
+    if (res.status === 401 || res.status === 403) throw new Error('auth');
+    if (res.status === 500) throw new Error(data.error || 'server-error');
+    if (!res.ok) throw new Error(data.error || 'unknown');
 
     const liveUrl = data.url || `${PAGES_BASE}view?project=${projectId}&note=${noteSlug}`;
     msg.className = 'pub-msg ok';
@@ -752,7 +755,14 @@ async function publishToGitHub() {
     document.getElementById('send-panel').classList.add('show');
   } catch(e) {
     msg.className = 'pub-msg err';
-    msg.textContent = 'Publish failed: ' + e.message;
+    const friendly = {
+      'Failed to fetch':  'Could not reach the server. Please check your internet connection and try again.',
+      'too-large':        'This note is too large to publish — likely due to large images. Try using smaller or fewer photos.',
+      'auth':             'Your session has expired. Please sign out and sign back in.',
+      'server-parse':     'The server returned an unexpected response. Please try again.',
+      'server-error':     'Something went wrong on the server. Please contact Rita.',
+    };
+    msg.textContent = friendly[e.message] || (e.message.includes('GITHUB_TOKEN') ? 'Publishing is not set up correctly. Please contact Rita.' : 'Something went wrong. Please try again or contact Rita.');
   }
 }
 
@@ -898,7 +908,15 @@ function renderHistory() {
           document.getElementById('login-err').textContent = 'Access is restricted to @ideo.com accounts.';
         }
       } catch(err) {
-        document.getElementById('login-err').textContent = 'Sign-in failed: ' + err.message;
+        const code = err.code || '';
+        const loginErrEl = document.getElementById('login-err');
+        if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+          loginErrEl.textContent = '';
+        } else if (code === 'auth/popup-blocked') {
+          loginErrEl.textContent = 'The sign-in popup was blocked. Please allow popups for this site and try again.';
+        } else {
+          loginErrEl.textContent = 'Sign-in failed. Make sure you are using your @ideo.com Google account.';
+        }
       }
     }
   };

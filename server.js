@@ -49,28 +49,28 @@ function verifyLinkToken(uid, projectId, noteSlug, token, password = '') {
 async function requireIdeoAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized: Missing auth token' });
+    return res.status(401).json({ error: 'Your session has expired. Please sign out and sign back in.' });
   }
   const token = authHeader.split('Bearer ')[1];
   try {
     const decoded = await admin.auth().verifyIdToken(token);
     if (!decoded.email?.endsWith('@ideo.com')) {
-      return res.status(403).json({ error: 'Forbidden: Must be an @ideo.com email address' });
+      return res.status(403).json({ error: 'Access is restricted to @ideo.com accounts.' });
     }
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+    return res.status(401).json({ error: 'Your session has expired. Please sign out and sign back in.' });
   }
 }
 
 // ── Publish note to Firebase Storage ─────────────────────────────────────
 app.post('/api/publish-note', requireIdeoAuth, async (req, res) => {
-  if (!bucket) return res.status(500).json({ error: 'Firebase Storage not initialised' });
+  if (!bucket) return res.status(500).json({ error: 'Publishing is not set up correctly. Please contact Rita.' });
 
   const { projectId, noteSlug, htmlContent, password = '' } = req.body;
   if (!projectId || !noteSlug || !htmlContent) {
-    return res.status(400).json({ error: 'projectId, noteSlug and htmlContent are required' });
+    return res.status(400).json({ error: 'Something went wrong building the note. Please try again.' });
   }
 
   const uid = req.user.uid;
@@ -89,7 +89,10 @@ app.post('/api/publish-note', requireIdeoAuth, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to publish note: ' + err.message });
+    const msg = err.code === 'storage/unknown' || err.message?.includes('too large')
+      ? 'This note is too large to publish. Try using smaller or fewer photos.'
+      : 'Something went wrong while publishing. Please try again or contact Rita.';
+    res.status(500).json({ error: msg });
   }
 });
 
@@ -103,13 +106,13 @@ app.get('/api/get-note', async (req, res) => {
   try {
     await admin.auth().verifyIdToken(token);
   } catch (err) {
-    return res.status(403).json({ error: 'Forbidden: Invalid session' });
+    return res.status(403).json({ error: 'Your session has expired. Please sign out and sign back in.' });
   }
 
-  if (!bucket) return res.status(500).json({ error: 'Firebase Storage not initialised' });
+  if (!bucket) return res.status(500).json({ error: 'Storage is not available. Please contact Rita.' });
 
   const { project, note, uid } = req.query;
-  if (!project || !note || !uid) return res.status(400).json({ error: 'uid, project and note query params required' });
+  if (!project || !note || !uid) return res.status(400).json({ error: 'The note link is incomplete. Please publish again to get a new link.' });
 
   try {
     const file = bucket.file(`notes/${uid}/${project}/${note}.html`);
@@ -117,20 +120,20 @@ app.get('/api/get-note', async (req, res) => {
     res.setHeader('Content-Type', 'text/html');
     res.send(contents.toString('utf8'));
   } catch (err) {
-    res.status(404).json({ error: 'Note not found' });
+    res.status(404).json({ error: 'Note not found. It may have been deleted or the link may be out of date.' });
   }
 });
 
 // ── Shared helper: fetch note from storage and send ───────────────────────
 async function serveNote(uid, project, note, res) {
-  if (!bucket) return res.status(500).send('Storage unavailable');
+  if (!bucket) return res.status(500).send('This note is temporarily unavailable. Please try again later.');
   try {
     const file = bucket.file(`notes/${uid}/${project}/${note}.html`);
     const [contents] = await file.download();
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(contents.toString('utf8'));
   } catch (err) {
-    res.status(404).send('Note not found.');
+    res.status(404).send('Note not found. The link may be out of date — please ask for a new one.');
   }
 }
 
@@ -177,13 +180,13 @@ function passwordGateHtml(uid, project, note, token, error = '') {
 app.get('/view', async (req, res) => {
   const { uid, project, note, token, locked } = req.query;
   if (!uid || !project || !note || !token) {
-    return res.status(400).send('Invalid link — please ask for a new one.');
+    return res.status(400).send('This link is incomplete. Please ask for a new one.');
   }
   if (locked === '1') {
     return res.send(passwordGateHtml(uid, project, note, token));
   }
   if (!verifyLinkToken(uid, project, note, token)) {
-    return res.status(403).send('This link is not valid. Please ask for a new one.');
+    return res.status(403).send('This link is not valid or has expired. Please ask for a new one.');
   }
   await serveNote(uid, project, note, res);
 });
@@ -193,10 +196,10 @@ app.use(express.urlencoded({ extended: false }));
 app.post('/view', async (req, res) => {
   const { uid, project, note, token, password = '' } = req.body;
   if (!uid || !project || !note || !token) {
-    return res.status(400).send('Invalid request.');
+    return res.status(400).send('This link is incomplete. Please ask for a new one.');
   }
   if (!verifyLinkToken(uid, project, note, token, password)) {
-    return res.status(403).send(passwordGateHtml(uid, project, note, token, 'Incorrect password — please try again.'));
+    return res.status(403).send(passwordGateHtml(uid, project, note, token, 'That password is incorrect. Please try again.'));
   }
   await serveNote(uid, project, note, res);
 });
@@ -204,7 +207,7 @@ app.post('/view', async (req, res) => {
 // ── Legacy GitHub publish proxy (kept as fallback) ────────────────────────
 app.post('/publish', async (req, res) => {
   const token = process.env.GITHUB_TOKEN;
-  if (!token) return res.status(500).json({ error: 'GITHUB_TOKEN not configured on server' });
+  if (!token) return res.status(500).json({ error: 'Publishing is not set up correctly. Please contact Rita.' });
 
   const { repo, filename, content } = req.body;
   if (!repo || !filename || !content) {
@@ -231,11 +234,11 @@ app.post('/publish', async (req, res) => {
   try {
     const ghRes = await fetch(apiBase, { method: 'PUT', headers, body: JSON.stringify(body) });
     const data = await ghRes.json();
-    if (!ghRes.ok) return res.status(ghRes.status).json({ error: data.message || 'GitHub error' });
+    if (!ghRes.ok) return res.status(ghRes.status).json({ error: 'Something went wrong while publishing. Please try again or contact Rita.' });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Publish failed: ' + err.message });
+    res.status(500).json({ error: 'Something went wrong while publishing. Please try again or contact Rita.' });
   }
 });
 
