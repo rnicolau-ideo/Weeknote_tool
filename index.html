@@ -505,7 +505,7 @@ function autoMuted(bg) { return luminance(bg) > 0.35 ? '#444441' : 'rgba(255,255
 function formatDate(val) {
   if (!val) return '';
   const [y, m, d] = val.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
 
 function getFilename() {
