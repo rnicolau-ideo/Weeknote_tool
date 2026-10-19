@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Newsletter Builder</title>
+<title>Note Builder</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500&family=Manrope:wght@400;500;600&display=swap');
   @font-face{font-family:'FHOscar';src:url('/fonts/FHOscar-Regular.woff2') format('woff2'),url('/fonts/FHOscar-Regular.woff') format('woff');font-weight:400;font-display:swap;}
@@ -145,7 +145,7 @@
 <!-- Login gate (shown until Firebase confirms auth) -->
 <div id="login-gate">
   <div class="login-card">
-    <div class="login-logo">Newsletter Builder</div>
+    <div class="login-logo">Note Builder</div>
     <div class="login-sub">IDEO Edition — Any Project</div>
     <button class="login-btn" id="login-gate-btn" onclick="handleAuthAction()">
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
@@ -223,7 +223,7 @@
 
   <div class="topbar">
     <div>
-      <div class="page-title">Newsletter Builder</div>
+      <div class="page-title">Note Builder</div>
       <div class="page-sub">IDEO Edition — Any Project</div>
     </div>
     <button class="settings-btn" onclick="openSidebar()">
@@ -317,14 +317,14 @@
   <!-- Preview tab -->
   <div id="preview-panel" style="display:none;">
     <div class="preview-wrap show">
-      <iframe class="preview-iframe" id="preview-frame" srcdoc="<p style='padding:40px;color:#888;font-family:sans-serif'>Switch to Preview to see your newsletter.</p>"></iframe>
+      <iframe class="preview-iframe" id="preview-frame" srcdoc="<p style='padding:40px;color:#888;font-family:sans-serif'>Switch to Preview to see your note.</p>"></iframe>
     </div>
   </div>
 
   <!-- History panel -->
   <div id="history-panel" style="display:none;">
     <div class="card" style="border-radius:0 0 4px 4px;">
-      <div class="section-lbl">Recent newsletters</div>
+      <div class="section-lbl">Recent notes</div>
       <div id="history-list"></div>
     </div>
   </div>
@@ -527,7 +527,7 @@ function generateHTML() {
   const label    = document.getElementById('s-label').value.trim() || 'Week 01';
   const signoff  = document.getElementById('s-signoff').value.trim() || 'See you next week!';
   const sender   = document.getElementById('s-sender').value.trim() || 'The team';
-  const headline = document.getElementById('f-headline').value.trim() || 'Newsletter headline';
+  const headline = document.getElementById('f-headline').value.trim() || 'Note headline';
   const introRaw = document.getElementById('f-intro').value.trim();
   const bulletsRaw = document.getElementById('f-bullets').value.trim();
   const nextRaw  = document.getElementById('f-next').value.trim();
@@ -756,7 +756,7 @@ async function publishToGitHub() {
   }
 }
 
-// ── Copy newsletter link ──────────────────────────────────────────────────
+// ── Copy note link ──────────────────────────────────────────────────
 function copyNoteLink() {
   const url = window._lastPublishedUrl;
   if (!url) return;
@@ -846,7 +846,7 @@ function renderHistory() {
   const hist = getHistory();
   const el = document.getElementById('history-list');
   if (!hist.length) {
-    el.innerHTML = '<div class="hist-empty">No newsletters published yet. Sign in and hit Publish to save one here.</div>';
+    el.innerHTML = '<div class="hist-empty">No notes published yet. Sign in and hit Publish to save one here.</div>';
     return;
   }
   el.innerHTML = hist.map(e => {
