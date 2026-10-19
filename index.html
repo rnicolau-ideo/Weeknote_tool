@@ -6,9 +6,10 @@
 <title>Newsletter Builder</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500&family=Manrope:wght@400;500;600&display=swap');
+  @font-face{font-family:'FHOscar';src:url('/fonts/FHOscar-Regular.woff2') format('woff2'),url('/fonts/FHOscar-Regular.woff') format('woff');font-weight:400;font-display:swap;}
 
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{background:#DBE0E3;font-family:'Geist',sans-serif;color:#1a1a18;min-height:100vh;}
+  body{background:#7B92A5;font-family:'Geist',sans-serif;color:#1a1a18;min-height:100vh;}
 
   /* ── Sidebar ── */
   .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:90;}
@@ -42,8 +43,8 @@
 
   /* ── Topbar ── */
   .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;}
-  .page-title{font-family:'Manrope',sans-serif;font-weight:700;font-size:20px;color:#1a1a18;letter-spacing:-.02em;}
-  .page-sub{font-family:'Manrope',sans-serif;font-size:11px;font-weight:500;color:#888780;letter-spacing:.02em;margin-top:3px;}
+  .page-title{font-family:'FHOscar','Manrope',sans-serif;font-weight:400;font-size:20px;color:#1a1a18;letter-spacing:-.02em;}
+  .page-sub{font-family:'FHOscar','Manrope',sans-serif;font-weight:400;font-size:11px;color:#888780;letter-spacing:.02em;margin-top:3px;}
   .settings-btn{display:flex;align-items:center;gap:7px;font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#888780;background:#fff;border:.5px solid #d3d1c7;border-radius:4px;padding:9px 14px;cursor:pointer;transition:all .15s;}
   .settings-btn:hover{background:#f0f2f5;color:#1a1a18;}
 
@@ -120,8 +121,8 @@
   #login-gate{position:fixed;inset:0;background:#DBE0E3;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;}
   #login-gate.hidden{display:none;}
   .login-card{background:#fff;border:.5px solid #e8e6df;border-radius:8px;padding:56px 48px 48px;text-align:center;max-width:380px;width:90%;}
-  .login-logo{font-family:'Manrope',sans-serif;font-weight:700;font-size:20px;color:#1a1a18;letter-spacing:-.02em;margin-bottom:6px;}
-  .login-sub{font-family:'Manrope',sans-serif;font-size:11px;font-weight:500;color:#888780;letter-spacing:.02em;margin-bottom:40px;}
+  .login-logo{font-family:'FHOscar','Manrope',sans-serif;font-weight:400;font-size:20px;color:#1a1a18;letter-spacing:-.02em;margin-bottom:6px;}
+  .login-sub{font-family:'FHOscar','Manrope',sans-serif;font-weight:400;font-size:11px;color:#888780;letter-spacing:.02em;margin-bottom:40px;}
   .login-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#1a1a18;color:#f5f4f0;border:none;border-radius:4px;padding:13px 22px;font-family:'Geist',sans-serif;font-size:14px;cursor:pointer;transition:opacity .15s;}
   .login-btn:hover{opacity:.85;}
   .login-btn svg{flex-shrink:0;}
@@ -215,14 +216,6 @@
     <input type="file" id="font-picker" accept=".woff,.woff2,.ttf" style="display:none"/>
   </div>
 
-  <div class="s-section">
-    <div class="s-section-title">Publish</div>
-    <div class="s-field">
-      <label>Note slug <span style="color:#b4b2a9">(auto-generated)</span></label>
-      <input type="text" id="s-filename" placeholder="week01" style="color:#888780;"/>
-      <p class="s-note">Leave blank to auto-generate from the issue label. Used as the note URL.</p>
-    </div>
-  </div>
 </div>
 
 <!-- Main (hidden until authenticated) -->
@@ -234,7 +227,7 @@
       <div class="page-sub">IDEO Edition — Any Project</div>
     </div>
     <button class="settings-btn" onclick="openSidebar()">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.2" stroke="currentColor" stroke-width="1.1"/><path d="M7 1v1.2M7 11.8V13M1 7h1.2M11.8 7H13M2.757 2.757l.849.849M10.394 10.394l.849.849M2.757 11.243l.849-.849M10.394 3.606l.849-.849" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M7.5 3.5l3 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
       Design
     </button>
   </div>
@@ -248,6 +241,14 @@
 
   <!-- Build tab -->
   <div id="build-panel">
+
+    <div class="card">
+      <div class="section-lbl">Note slug</div>
+      <div class="field" style="margin-bottom:0;">
+        <input type="text" id="s-filename" placeholder="week01" style="color:#888780;" oninput="autoPreview()"/>
+        <p class="hint">Leave blank to auto-generate from the issue label. Used in the published URL.</p>
+      </div>
+    </div>
 
     <div class="card">
       <div class="section-lbl">Header image</div>
@@ -307,9 +308,7 @@
     <div class="card">
       <div class="section-lbl">What's coming next</div>
       <div class="field">
-        <label>Bullet points</label>
-        <textarea id="f-next" rows="4" placeholder="We will kick off three new workstreams…&#10;We will brief the incoming team members…" oninput="autoPreview()"></textarea>
-        <p class="hint">One item per line.</p>
+        <textarea id="f-next" rows="4" placeholder="We will kick off three new workstreams and brief the incoming team members on progress to date…" oninput="autoPreview()"></textarea>
       </div>
     </div>
 
@@ -334,6 +333,7 @@
   <div class="actions">
     <button class="btn" onclick="publishToGitHub()">Publish</button>
     <button class="btn-sm" onclick="downloadHTML()">Download HTML</button>
+    <button class="btn-sm" onclick="downloadPDF()">Download PDF</button>
     <div class="pub-msg" id="pub-msg"></div>
   </div>
 
@@ -577,10 +577,10 @@ function generateHTML() {
   // Photos
   const photoGridHTML = buildPhotoGridHTML(photos);
 
-  // Next bullets
-  const nextLines = nextRaw ? nextRaw.split('\n').filter(l => l.trim()) : [];
-  const nextHTML = nextLines.length
-    ? nextLines.map(n => `<p style="font-family:${bStack};font-size:14px;font-weight:400;line-height:1.7;color:${textNext === '#f5f4f0' ? 'rgba(255,255,255,0.75)' : '#444441'};margin-bottom:8px;">• ${esc(n.trim())}</p>`).join('')
+  // Next — plain paragraphs split on blank lines
+  const nextParas = nextRaw ? nextRaw.split(/\n\n+/).map(p => p.trim()).filter(Boolean) : [];
+  const nextHTML = nextParas.length
+    ? nextParas.map(p => `<p style="font-family:${bStack};font-size:14px;font-weight:400;line-height:1.7;color:${textNext === '#f5f4f0' ? 'rgba(255,255,255,0.75)' : '#444441'};margin-bottom:8px;">${esc(p)}</p>`).join('')
     : `<p style="font-family:${bStack};font-size:14px;color:${subNext};">Coming soon.</p>`;
 
   // Google Fonts for body/label (Manrope + Geist Mono) — skipped if custom fonts uploaded
@@ -688,6 +688,20 @@ function downloadHTML() {
   a.download = getFilename();
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+function downloadPDF() {
+  const html = generateHTML();
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;height:1px;border:none;';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+  iframe.contentWindow.addEventListener('load', () => {
+    iframe.contentWindow.print();
+    setTimeout(() => document.body.removeChild(iframe), 1000);
+  });
 }
 
 // ── Publish ───────────────────────────────────────────────────────────────
