@@ -31,15 +31,15 @@ try {
 }
 
 // ── Link token (HMAC-SHA256) ──────────────────────────────────────────────
-function linkToken(projectId, noteSlug, password = '') {
+function linkToken(uid, projectId, noteSlug, password = '') {
   const secret = process.env.LINK_SECRET || 'dev-secret-change-in-production';
-  return crypto.createHmac('sha256', secret).update(`${projectId}:${noteSlug}:${password}`).digest('hex');
+  return crypto.createHmac('sha256', secret).update(`${uid}:${projectId}:${noteSlug}:${password}`).digest('hex');
 }
 
-function verifyLinkToken(projectId, noteSlug, token, password = '') {
+function verifyLinkToken(uid, projectId, noteSlug, token, password = '') {
   if (!token || token.length !== 64) return false;
   try {
-    const expected = Buffer.from(linkToken(projectId, noteSlug, password), 'hex');
+    const expected = Buffer.from(linkToken(uid, projectId, noteSlug, password), 'hex');
     const actual   = Buffer.from(token, 'hex');
     return crypto.timingSafeEqual(expected, actual);
   } catch { return false; }
@@ -73,18 +73,19 @@ app.post('/api/publish-note', requireIdeoAuth, async (req, res) => {
     return res.status(400).json({ error: 'projectId, noteSlug and htmlContent are required' });
   }
 
-  const filePath = `notes/${projectId}/${noteSlug}.html`;
+  const uid = req.user.uid;
+  const filePath = `notes/${uid}/${projectId}/${noteSlug}.html`;
   try {
     const file = bucket.file(filePath);
     await file.save(htmlContent, {
       contentType: 'text/html',
       metadata: { cacheControl: 'private, max-age=0' }
     });
-    const token = linkToken(projectId, noteSlug, password);
+    const token = linkToken(uid, projectId, noteSlug, password);
     const locked = password ? '&locked=1' : '';
     res.json({
       success: true,
-      url: `https://projectweeklynotes.com/view?project=${projectId}&note=${noteSlug}&token=${token}${locked}`
+      url: `https://projectweeklynotes.com/view?uid=${uid}&project=${projectId}&note=${noteSlug}&token=${token}${locked}`
     });
   } catch (err) {
     console.error(err);
@@ -107,11 +108,11 @@ app.get('/api/get-note', async (req, res) => {
 
   if (!bucket) return res.status(500).json({ error: 'Firebase Storage not initialised' });
 
-  const { project, note } = req.query;
-  if (!project || !note) return res.status(400).json({ error: 'project and note query params required' });
+  const { project, note, uid } = req.query;
+  if (!project || !note || !uid) return res.status(400).json({ error: 'uid, project and note query params required' });
 
   try {
-    const file = bucket.file(`notes/${project}/${note}.html`);
+    const file = bucket.file(`notes/${uid}/${project}/${note}.html`);
     const [contents] = await file.download();
     res.setHeader('Content-Type', 'text/html');
     res.send(contents.toString('utf8'));
@@ -121,20 +122,20 @@ app.get('/api/get-note', async (req, res) => {
 });
 
 // ── Shared helper: fetch note from storage and send ───────────────────────
-async function serveNote(project, note, res) {
+async function serveNote(uid, project, note, res) {
   if (!bucket) return res.status(500).send('Storage unavailable');
   try {
-    const file = bucket.file(`notes/${project}/${note}.html`);
+    const file = bucket.file(`notes/${uid}/${project}/${note}.html`);
     const [contents] = await file.download();
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(contents.toString('utf8'));
   } catch (err) {
-    res.status(404).send('Newsletter not found.');
+    res.status(404).send('Note not found.');
   }
 }
 
 // ── Password gate HTML ────────────────────────────────────────────────────
-function passwordGateHtml(project, note, token, error = '') {
+function passwordGateHtml(uid, project, note, token, error = '') {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -157,13 +158,14 @@ function passwordGateHtml(project, note, token, error = '') {
 <body>
 <div class="card">
   <div class="title">Weekly Note</div>
-  <div class="sub">This newsletter is password protected.</div>
+  <div class="sub">This note is password protected.</div>
   <form method="POST" action="/view">
+    <input type="hidden" name="uid" value="${uid}"/>
     <input type="hidden" name="project" value="${project}"/>
     <input type="hidden" name="note" value="${note}"/>
     <input type="hidden" name="token" value="${token}"/>
     <input class="input" type="password" name="password" placeholder="Enter password" autofocus/>
-    <button class="btn" type="submit">View newsletter</button>
+    <button class="btn" type="submit">View note</button>
     ${error ? `<div class="err">${error}</div>` : ''}
   </form>
 </div>
@@ -173,30 +175,30 @@ function passwordGateHtml(project, note, token, error = '') {
 
 // ── Client view route — token-gated, optional password ───────────────────
 app.get('/view', async (req, res) => {
-  const { project, note, token, locked } = req.query;
-  if (!project || !note || !token) {
+  const { uid, project, note, token, locked } = req.query;
+  if (!uid || !project || !note || !token) {
     return res.status(400).send('Invalid link — please ask for a new one.');
   }
   if (locked === '1') {
-    return res.send(passwordGateHtml(project, note, token));
+    return res.send(passwordGateHtml(uid, project, note, token));
   }
-  if (!verifyLinkToken(project, note, token)) {
+  if (!verifyLinkToken(uid, project, note, token)) {
     return res.status(403).send('This link is not valid. Please ask for a new one.');
   }
-  await serveNote(project, note, res);
+  await serveNote(uid, project, note, res);
 });
 
 app.use(express.urlencoded({ extended: false }));
 
 app.post('/view', async (req, res) => {
-  const { project, note, token, password = '' } = req.body;
-  if (!project || !note || !token) {
+  const { uid, project, note, token, password = '' } = req.body;
+  if (!uid || !project || !note || !token) {
     return res.status(400).send('Invalid request.');
   }
-  if (!verifyLinkToken(project, note, token, password)) {
-    return res.status(403).send(passwordGateHtml(project, note, token, 'Incorrect password — please try again.'));
+  if (!verifyLinkToken(uid, project, note, token, password)) {
+    return res.status(403).send(passwordGateHtml(uid, project, note, token, 'Incorrect password — please try again.'));
   }
-  await serveNote(project, note, res);
+  await serveNote(uid, project, note, res);
 });
 
 // ── Legacy GitHub publish proxy (kept as fallback) ────────────────────────

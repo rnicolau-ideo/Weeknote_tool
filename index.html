@@ -769,10 +769,12 @@ function copyNoteLink() {
 }
 
 // ── History ───────────────────────────────────────────────────────────────
-const HISTORY_KEY = 'nb-history';
+function historyKey() {
+  return `nb-history-${window._firebaseUid || 'anon'}`;
+}
 
 function getHistory() {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch(_) { return []; }
+  try { return JSON.parse(localStorage.getItem(historyKey()) || '[]'); } catch(_) { return []; }
 }
 
 function saveToHistory(filename, liveUrl) {
@@ -789,7 +791,7 @@ function saveToHistory(filename, liveUrl) {
   };
   const hist = getHistory();
   hist.unshift(entry);
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(hist.slice(0, 10))); } catch(_) {}
+  try { localStorage.setItem(historyKey(), JSON.stringify(hist.slice(0, 10))); } catch(_) {}
 }
 
 function captureFormData() {
@@ -838,7 +840,7 @@ function loadFromHistory(id) {
 
 function deleteFromHistory(id) {
   const hist = getHistory().filter(e => e.id !== id);
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(hist)); } catch(_) {}
+  try { localStorage.setItem(historyKey(), JSON.stringify(hist)); } catch(_) {}
   renderHistory();
 }
 
@@ -909,6 +911,7 @@ function renderHistory() {
 
     if (user && user.email?.endsWith('@ideo.com')) {
       window._firebaseToken = await user.getIdToken();
+      window._firebaseUid   = user.uid;
       setInterval(async () => { window._firebaseToken = await user.getIdToken(true); }, 55 * 60 * 1000);
       document.getElementById('auth-user-label').textContent = user.email;
       gate.classList.add('hidden');
@@ -918,6 +921,7 @@ function renderHistory() {
     } else {
       if (user) await signOut(auth); // signed in but wrong domain
       window._firebaseToken = null;
+      window._firebaseUid   = null;
       gate.classList.remove('hidden');
       authBar.style.display = 'none';
       appMain.style.display = 'none';
